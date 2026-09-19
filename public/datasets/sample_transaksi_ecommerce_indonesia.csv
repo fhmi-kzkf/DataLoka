@@ -1,0 +1,16 @@
+No_Pesanan,Tanggal_Transaksi,Nama_Produk,Kategori,Jumlah_Terjual,Harga_Satuan,Total_Penjualan,Ongkir,Diskon,Kota_Tujuan,Metode_Pembayaran
+TRX-2026-001,2026-03-01,Kemeja Batik Tulis Pria,Fashion,3,250000,750000,18000,25000,Jakarta Selatan,QRIS
+TRX-2026-002,2026-03-01,Earphone TWS Bluetooth,Elektronik,5,180000,900000,12000,15000,Surabaya,GoPay
+TRX-2026-003,2026-03-02,Serum Wajah Glowing,Beauty,10,85000,850000,10000,0,Bandung,Transfer Bank
+TRX-2026-004,2026-03-02,Kopi Arabika Gayo 250g,F&B,15,65000,975000,15000,10000,Medan,ShopeePay
+TRX-2026-005,2026-03-03,Sepatu Sneakers Casual,Fashion,4,320000,1280000,22000,50000,Semarang,Kartu Kredit
+TRX-2026-006,2026-03-03,Smart Watch AMOLED,Elektronik,2,650000,1300000,15000,30000,Jakarta Barat,QRIS
+TRX-2026-007,2026-03-04,Sunscreen UV Shield SPF 50,Beauty,8,95000,760000,12000,10000,Yogyakarta,Dana
+TRX-2026-008,2026-03-04,Snack Keripik Singkong Balado,F&B,25,20000,500000,25000,0,Malang,COD
+TRX-2026-009,2026-03-05,Jaket Parka Outdoor,Fashion,3,380000,1140000,18000,20000,Bogor,GoPay
+TRX-2026-010,2026-03-05,Keyboard Mechanical RGB,Elektronik,4,450000,1800000,20000,45000,Tangerang,Transfer Bank
+TRX-2026-011,2026-03-06,Lip Matte Velvet,Beauty,12,60000,720000,10000,5000,Denpasar,QRIS
+TRX-2026-012,2026-03-06,Madu Hutan Asli 500ml,F&B,6,120000,720000,16000,0,Palembang,OVO
+TRX-2026-013,2026-03-07,Celana Chino Slim Fit,Fashion,5,190000,950000,15000,15000,Makassar,Transfer Bank
+TRX-2026-014,2026-03-07,Powerbank Fast Charge 20000mAh,Elektronik,6,220000,1320000,18000,20000,Bekasi,ShopeePay
+TRX-2026-015,2026-03-08,Moisturizer Gel Hydrating,Beauty,9,110000,990000,12000,10000,Depok,QRIS

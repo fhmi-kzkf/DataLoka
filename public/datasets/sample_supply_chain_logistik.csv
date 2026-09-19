@@ -1,0 +1,11 @@
+No_Resi,Tanggal_Kirim,Ekspedisi,Kota_Asal,Kota_Tujuan,Berat_KG,Ongkos_Kirim,Durasi_Hari,Status_Pengiriman,SLA_Tercapai
+JP982103912,2026-03-01,J&T Express,Jakarta Barat,Surabaya,2.4,36000,2,Terkirim,Ya
+SP001928312,2026-03-01,SiCepat,Jakarta Timur,Bandung,1.1,14000,1,Terkirim,Ya
+JN882194012,2026-03-02,JNE Reguler,Tangerang,Medan,3.8,95000,3,Terkirim,Ya
+AN771290312,2026-03-02,AnterAja,Jakarta Selatan,Semarang,1.5,24000,2,Terkirim,Ya
+JP982103913,2026-03-03,J&T Express,Bekasi,Yogyakarta,0.8,18000,2,Terkirim,Ya
+SP001928313,2026-03-03,SiCepat,Jakarta Utara,Denpasar,4.2,84000,3,Terkirim,Ya
+JN882194013,2026-03-04,JNE Reguler,Depok,Palembang,2.0,46000,2,Terkirim,Ya
+AN771290313,2026-03-04,AnterAja,Jakarta Pusat,Makassar,1.8,54000,4,Terkirim,Tidak
+JP982103914,2026-03-05,J&T Express,Bogor,Malang,2.5,42000,2,Terkirim,Ya
+SP001928314,2026-03-05,SiCepat,Jakarta Barat,Balikpapan,3.0,90000,3,Terkirim,Ya
