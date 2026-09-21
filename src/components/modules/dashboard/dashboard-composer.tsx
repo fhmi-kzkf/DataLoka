@@ -16,8 +16,8 @@ import { generateEditorialInsights } from "@/core/insight/insight-generator";
 import { InsightGrid } from "@/components/modules/insight/insight-grid";
 import { humanizeColumnName, formatCurrencyIDR } from "@/lib/formatters";
 import type { ChartRecommendation, ChartType, DataPoint } from "@/types/chart";
-import type { DatasetRow } from "@/types/dataset";
-import { parseFlexibleDate } from "@/core/mapping/date-normalizer";
+import { aggregateByDate, aggregateByCategory } from "@/core/engine/aggregator";
+import { normalizeCategoryValue, sanitizeNumericValue } from "@/core/quality/data-sanitizer";
 
 interface DashboardComposerProps {
   onExport?: () => void;
@@ -55,25 +55,49 @@ export const DashboardComposer: React.FC<DashboardComposerProps> = ({
     return getTemplateById(activeTemplateId);
   }, [activeTemplateId]);
 
-  // Extract all categories available in main charts data
+  // Extract all categories available in categorical distribution charts and columns
   const availableCategories = useMemo(() => {
     if (!dashboard) return [];
     const set = new Set<string>();
+
+    // 1. Extract from categorical distribution charts (donut, horizontal_bar, bar)
     dashboard.mainCharts.forEach((chart) => {
-      chart.data.forEach((dp) => {
-        if (dp.category && isNaN(Number(dp.category))) set.add(String(dp.category));
-        if (dp.label && isNaN(Number(dp.label))) set.add(String(dp.label));
-      });
+      const isDistributionChart =
+        chart.chartType === "donut" ||
+        chart.chartType === "horizontal_bar" ||
+        chart.chartType === "bar";
+
+      if (isDistributionChart) {
+        chart.data.forEach((dp) => {
+          if (dp.label && dp.label !== "Lainnya" && isNaN(Number(dp.label))) {
+            set.add(String(dp.label).trim());
+          }
+        });
+      }
     });
 
-    if (dataset?.rows) {
-      dataset.rows.forEach((row) => {
-        const cat = row["kategori"] || row["Kategori"] || row["wilayah"] || row["Wilayah"];
-        if (cat) set.add(String(cat));
-      });
+    // 2. Extract from categorical dataset columns
+    if (dataset?.rows && dataset.headers) {
+      const catHeaders = dataset.headers.filter((h) =>
+        /kategori_pesanan|channel|platform|kategori|metode_pembayaran|metode|wilayah|kota/i.test(h)
+      );
+
+      for (const h of catHeaders) {
+        for (const row of dataset.rows) {
+          const val = row[h];
+          if (val !== null && val !== undefined && String(val).trim() !== "") {
+            const normalized = normalizeCategoryValue(val, h);
+            if (normalized && normalized !== "Lainnya") {
+              set.add(normalized);
+            }
+          }
+          if (set.size >= 12) break;
+        }
+        if (set.size >= 12) break;
+      }
     }
 
-    return Array.from(set).slice(0, 12);
+    return Array.from(set).slice(0, 10);
   }, [dashboard, dataset]);
 
   // Filter raw dataset rows dynamically based on category, search, and date range
@@ -84,9 +108,13 @@ export const DashboardComposer: React.FC<DashboardComposerProps> = ({
     return rawRows.filter((row) => {
       // 1. Category Filter
       if (globalCategoryFilter) {
-        const matchesCategory = Object.values(row).some((val) => {
+        const target = globalCategoryFilter.toLowerCase().trim();
+        const matchesCategory = Object.entries(row).some(([k, val]) => {
           if (val === null || val === undefined) return false;
-          return String(val).toLowerCase().trim() === globalCategoryFilter.toLowerCase().trim();
+          const str = String(val).toLowerCase().trim();
+          if (str === target) return true;
+          const norm = normalizeCategoryValue(val, k).toLowerCase().trim();
+          return norm === target;
         });
         if (!matchesCategory) return false;
       }
@@ -103,13 +131,17 @@ export const DashboardComposer: React.FC<DashboardComposerProps> = ({
 
       // 3. Date Range Filter
       if (datePreset !== "all" || customDateRange) {
-        const dateVal = row["tanggal"] || row["Tanggal"] || row["date"] || row["Date"];
+        const dateHeader = dataset?.headers?.find((h) =>
+          /waktu_transaksi|tanggal_transaksi|tgl_transaksi|tanggal|waktu|date|created_at/i.test(h) &&
+          !/^(id_|no_|kode_|trx_)/i.test(h)
+        );
+        const dateVal = dateHeader ? row[dateHeader] : (row["tanggal"] || row["Tanggal"] || row["date"] || row["Date"] || row["waktu_transaksi"]);
         const parsed = parseFlexibleDate(dateVal);
         if (parsed) {
+          const time = parsed.getTime();
           if (customDateRange?.startDate && customDateRange?.endDate) {
             const start = new Date(customDateRange.startDate).getTime();
             const end = new Date(customDateRange.endDate).getTime();
-            const time = parsed.getTime();
             if (time < start || time > end) return false;
           }
         }
@@ -117,7 +149,7 @@ export const DashboardComposer: React.FC<DashboardComposerProps> = ({
 
       return true;
     });
-  }, [dataset?.rows, globalCategoryFilter, searchFilter, datePreset, customDateRange]);
+  }, [dataset?.rows, dataset?.headers, globalCategoryFilter, searchFilter, datePreset, customDateRange]);
 
   // Apply filters to chart data points
   const filterData = useCallback(
@@ -205,15 +237,63 @@ export const DashboardComposer: React.FC<DashboardComposerProps> = ({
 
   const filteredMainCharts = useMemo(() => {
     if (!dashboard) return [];
+    const hasFilter = globalCategoryFilter || searchFilter.trim() || datePreset !== "all" || customDateRange;
+    const activeRows = hasFilter ? filteredDatasetRows : (dataset?.rows || []);
+
     return dashboard.mainCharts.map((chart) => {
-      // If cross-filter is active and chart is category breakdown, highlight or preserve full series for contrast
-      const isCategoryChart = chart.chartType === "donut" || chart.chartType === "horizontal_bar";
-      return {
-        ...chart,
-        data: isCategoryChart ? chart.data : filterData(chart.data),
-      };
+      // 1. Time-series charts: re-aggregate by date from activeRows if primaryDate exists
+      if (chart.xAxisColumn && (chart.chartType === "area" || chart.chartType === "line" || chart.chartType === "bar" || chart.id.includes("timeseries"))) {
+        const reaggregatedData = aggregateByDate(
+          activeRows,
+          chart.xAxisColumn,
+          chart.yAxisColumns,
+          chart.aggregationType || "sum"
+        );
+        return {
+          ...chart,
+          data: reaggregatedData,
+        };
+      }
+
+      // 2. Categorical distribution charts: re-aggregate by category from activeRows
+      if (chart.chartType === "donut" || chart.chartType === "pie" || chart.chartType === "horizontal_bar") {
+        const catCol = chart.categoryColumn || chart.xAxisColumn;
+        if (catCol) {
+          const reaggregatedData = aggregateByCategory(
+            activeRows,
+            catCol,
+            chart.yAxisColumns[0],
+            chart.aggregationType || "sum",
+            chart.chartType === "horizontal_bar" ? 10 : 7
+          );
+          return {
+            ...chart,
+            data: reaggregatedData,
+          };
+        }
+      }
+
+      // 3. Scatter charts: re-map points from activeRows
+      if (chart.chartType === "scatter" && chart.xAxisColumn) {
+        const xCol = chart.xAxisColumn;
+        const yCol = chart.yAxisColumns[0];
+        const remappedData = activeRows.slice(0, 50).map((r, idx) => {
+          const itemLabel = String(r["nama_menu"] || r["Nama_Menu"] || r["produk"] || r["Produk"] || r["sku"] || r["SKU"] || `Item ${idx + 1}`);
+          return {
+            label: itemLabel,
+            value: sanitizeNumericValue(r[xCol]),
+            secondaryValue: sanitizeNumericValue(r[yCol]),
+          };
+        });
+        return {
+          ...chart,
+          data: remappedData,
+        };
+      }
+
+      return chart;
     });
-  }, [dashboard, filterData]);
+  }, [dashboard, dataset?.rows, filteredDatasetRows, globalCategoryFilter, searchFilter, datePreset, customDateRange]);
 
   const insights = useMemo(() => {
     if (!dashboard) return [];
@@ -275,7 +355,13 @@ export const DashboardComposer: React.FC<DashboardComposerProps> = ({
       </div>
 
       {/* 2b. Domain-Specialized Interactive Widget (Custom Personality per Template) */}
-      <DomainSpecializedWidget templateId={activeTemplateId} />
+      <DomainSpecializedWidget
+        templateId={activeTemplateId}
+        rows={filteredDatasetRows.length > 0 ? filteredDatasetRows : (dataset?.rows || [])}
+        headers={rawHeaders}
+        kpis={computedKpis}
+        charts={dashboard.mainCharts}
+      />
 
       {/* 3. Global Filter Bar with Scalable Date Range Picker */}
       <div className="no-print">

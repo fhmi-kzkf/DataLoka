@@ -16,12 +16,19 @@ import {
   LineChart,
   PieChart,
   Table as TableIcon,
+  Code2,
+  ChevronDown,
+  ChevronUp,
+  User,
+  Bot,
+  CornerDownLeft,
 } from "lucide-react";
 import { useCommandStore } from "@/stores/command-store";
 import { useDatasetStore } from "@/stores/dataset-store";
 import { useDashboardStore } from "@/stores/dashboard-store";
 import { CommandSuggestionPill } from "./command-suggestion-pill";
 import { UniversalChartRenderer } from "@/components/charts/universal-chart-renderer";
+import { AiQueryEngine } from "@/core/ai/ai-query-engine";
 import type { AiQueryResult } from "@/core/ai/ai-types";
 import type { ChartType, ChartRecommendation } from "@/types/chart";
 
@@ -49,6 +56,7 @@ export const CommandBarModal: React.FC = () => {
   const [copiedSqlId, setCopiedSqlId] = useState<string | null>(null);
   const [pinnedChartId, setPinnedChartId] = useState<string | null>(null);
   const [activeChartTypes, setActiveChartTypes] = useState<Record<string, ChartType>>({});
+  const [expandedSqlIds, setExpandedSqlIds] = useState<Record<string, boolean>>({});
 
   const inputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -118,14 +126,14 @@ export const CommandBarModal: React.FC = () => {
     // Otherwise, treat as Tanya Data (AI Data Query via NVIDIA NIM / Local fallback)
     setIsAiLoading(true);
 
-    try {
-      const headers = dataset?.headers || ["Tanggal", "Kategori", "Produk", "Omset", "Qty"];
-      const rows = dataset?.rows || [
-        { Tanggal: "2026-01-01", Kategori: "Fashion", Produk: "Kemeja", Omset: 4500000, Qty: 30 },
-        { Tanggal: "2026-01-02", Kategori: "Elektronik", Produk: "TWS Earbuds", Omset: 8900000, Qty: 45 },
-        { Tanggal: "2026-01-03", Kategori: "Kecantikan", Produk: "Serum", Omset: 6100000, Qty: 52 },
-      ];
+    const headers = dataset?.headers || ["Tanggal", "Kategori", "Produk", "Omset", "Qty"];
+    const rows = dataset?.rows || [
+      { Tanggal: "2026-01-01", Kategori: "Fashion", Produk: "Kemeja", Omset: 4500000, Qty: 30 },
+      { Tanggal: "2026-01-02", Kategori: "Elektronik", Produk: "TWS Earbuds", Omset: 8900000, Qty: 45 },
+      { Tanggal: "2026-01-03", Kategori: "Kecantikan", Produk: "Serum", Omset: 6100000, Qty: 52 },
+    ];
 
+    try {
       const res = await fetch("/api/ai/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -149,12 +157,12 @@ export const CommandBarModal: React.FC = () => {
         throw new Error(json.error?.message || "Gagal memproses kueri AI.");
       }
     } catch {
-      // Local heuristic fallback
-      const execRes = executeCommand(trimmed);
+      // Robust deterministic AI fallback
+      const fallbackResult = AiQueryEngine.processQuery(trimmed, headers, rows, "Rp");
       addChatMessage({
         role: "assistant",
-        content: `Menganalisis: "${trimmed}". ${execRes.message}`,
-        executionResult: execRes,
+        content: fallbackResult.answerText,
+        aiResult: fallbackResult,
       });
     } finally {
       setIsAiLoading(false);
@@ -194,6 +202,13 @@ export const CommandBarModal: React.FC = () => {
     setTimeout(() => setCopiedSqlId(null), 2000);
   };
 
+  const toggleSqlExpand = (messageId: string) => {
+    setExpandedSqlIds((prev) => ({
+      ...prev,
+      [messageId]: !prev[messageId],
+    }));
+  };
+
   const handlePinChart = (
     recommendation: ChartRecommendation,
     messageId: string
@@ -205,6 +220,52 @@ export const CommandBarModal: React.FC = () => {
 
   const handleChartTypeChange = (messageId: string, newType: ChartType) => {
     setActiveChartTypes((prev) => ({ ...prev, [messageId]: newType }));
+  };
+
+  // Helper to format markdown text with bolding and bullet lists
+  const renderFormattedNarrative = (content: string) => {
+    const lines = content.split("\n");
+    return (
+      <div className="space-y-2 text-[14px] text-ink-black/90 leading-relaxed font-normal">
+        {lines.map((line, idx) => {
+          const trimmed = line.trim();
+          if (!trimmed) return <div key={idx} className="h-1.5" />;
+
+          // Parse **bold** parts
+          const parts = line.split(/(\*\*.*?\*\*)/g);
+          const parsedLine = parts.map((part, pIdx) => {
+            if (part.startsWith("**") && part.endsWith("**")) {
+              return (
+                <strong key={pIdx} className="font-semibold text-ink-black">
+                  {part.slice(2, -2)}
+                </strong>
+              );
+            }
+            return part;
+          });
+
+          // Check if bullet point or numbered item
+          if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+            return (
+              <div key={idx} className="flex items-start gap-2 pl-2">
+                <span className="text-sienna-brown font-bold mt-1 text-[11px]">&bull;</span>
+                <span className="flex-1">{parsedLine}</span>
+              </div>
+            );
+          }
+
+          if (/^\d+\.\s/.test(trimmed)) {
+            return (
+              <div key={idx} className="flex items-start gap-2 pl-1 font-medium text-ink-black mt-2 mb-1">
+                <span>{parsedLine}</span>
+              </div>
+            );
+          }
+
+          return <p key={idx}>{parsedLine}</p>;
+        })}
+      </div>
+    );
   };
 
   // Determine width class
@@ -233,14 +294,14 @@ export const CommandBarModal: React.FC = () => {
         className={`fixed inset-y-0 right-0 z-50 ${widthClasses} bg-paper-white border-l border-slate-gray/25 shadow-2xl flex flex-col transition-all duration-300 ease-in-out text-left animate-slideLeft`}
       >
         {/* Top Header Bar */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-gray/20 bg-fog-white/90 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-gray/20 bg-fog-white/95 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 bg-sienna-brown/10 border border-sienna-brown/25 flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 text-sienna-brown" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="font-signifier text-[17px] text-ink-black leading-none truncate">
+                <h2 className="font-signifier text-[16.5px] text-ink-black leading-none truncate">
                   Tanya Data AI
                 </h2>
                 <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 bg-sienna-brown text-paper-white font-bold tracking-wider">
@@ -250,7 +311,7 @@ export const CommandBarModal: React.FC = () => {
               <div className="flex items-center gap-1.5 text-[11.5px] font-mono text-slate-gray truncate mt-0.5">
                 <Database className="w-3 h-3 text-slate-gray/70 shrink-0" />
                 <span className="truncate">
-                  {dataset?.name || "Laporan Omnichannel.xlsx"}
+                  {dataset?.name || "Laporan Penjualan Omnichannel.xlsx"}
                 </span>
                 {dataset?.rowCount !== undefined && (
                   <span className="text-slate-gray/60">
@@ -310,15 +371,18 @@ export const CommandBarModal: React.FC = () => {
         {/* Scrollable Chat & Analytics Body */}
         <div
           ref={chatScrollRef}
-          className="flex-1 overflow-y-auto p-5 space-y-6 bg-paper-white"
+          className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 bg-fog-white/30"
         >
           {chatMessages.length === 0 ? (
             /* Minimal Starter State */
-            <div className="space-y-5 animate-fadeIn py-1">
+            <div className="space-y-5 animate-fadeIn py-2 max-w-2xl">
               {/* Minimal Intro */}
-              <div className="text-left">
-                <p className="text-[13.5px] text-slate-gray font-normal leading-relaxed">
-                  Tanyakan analisis bisnis apa saja untuk membedah data, mengekstrak kueri SQL, atau merender grafik secara instan.
+              <div className="text-left space-y-1">
+                <h3 className="font-signifier text-[17px] text-ink-black">
+                  Halo! Saya Asisten Analitik DataLoka.
+                </h3>
+                <p className="text-[13.5px] text-slate-gray leading-relaxed">
+                  Tanyakan performa bisnis, faktor pendorong penjualan, peringkat produk, atau minta saya membuat grafik secara instan.
                 </p>
               </div>
 
@@ -327,8 +391,9 @@ export const CommandBarModal: React.FC = () => {
                 <span className="text-[11px] font-mono uppercase font-semibold text-slate-gray tracking-wider block">
                   Contoh Pertanyaan Cepat:
                 </span>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {[
+                    "Kira kira apa faktor yang membuat produk saya laku dan produk yang mana saja?",
                     "Berapa total omset dan nilai rata-rata transaksi?",
                     "Siapa kategori produk paling mendominasi?",
                     "Tampilkan peringkat top 5 kontributor terbesar",
@@ -338,10 +403,10 @@ export const CommandBarModal: React.FC = () => {
                       key={q}
                       type="button"
                       onClick={() => handleAskAi(q)}
-                      className="text-left px-3 py-1.5 bg-fog-white hover:bg-mist-gray border border-slate-gray/20 hover:border-slate-gray/40 text-[12.5px] text-ink-black transition cursor-pointer"
+                      className="text-left px-3.5 py-2 bg-paper-white hover:bg-mist-gray border border-slate-gray/25 hover:border-slate-gray/50 text-[13px] text-ink-black transition cursor-pointer shadow-2xs group"
                     >
                       <span>{q}</span>
-                      <span className="text-slate-gray/50 ml-1.5 font-mono text-[11px]">&rarr;</span>
+                      <span className="text-sienna-brown ml-2 font-mono text-[11px] group-hover:translate-x-0.5 inline-block transition">&rarr;</span>
                     </button>
                   ))}
                 </div>
@@ -349,9 +414,9 @@ export const CommandBarModal: React.FC = () => {
 
               {/* History if available */}
               {history.length > 0 && (
-                <div className="space-y-2 pt-1 border-t border-slate-gray/15">
+                <div className="space-y-2 pt-2 border-t border-slate-gray/15">
                   <span className="text-[11px] font-mono uppercase font-semibold text-slate-gray tracking-wider block">
-                    Riwayat Pencarian:
+                    Riwayat Kueri:
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {history.slice(0, 4).map((cmd) => (
@@ -369,7 +434,7 @@ export const CommandBarModal: React.FC = () => {
               )}
 
               {/* Quick Workspace Commands */}
-              <div className="space-y-1.5 pt-1 border-t border-slate-gray/15">
+              <div className="space-y-1.5 pt-2 border-t border-slate-gray/15">
                 <span className="text-[11px] font-mono uppercase font-semibold text-slate-gray tracking-wider block">
                   Perintah Cepat Dasbor:
                 </span>
@@ -386,15 +451,15 @@ export const CommandBarModal: React.FC = () => {
               </div>
             </div>
           ) : (
-            /* Multi-turn Chat Thread */
+            /* Conversational Chatbot Feed */
             <div className="space-y-6">
               {chatMessages.map((msg) => {
                 if (msg.role === "user") {
                   return (
-                    <div key={msg.id} className="flex justify-end animate-fadeIn">
-                      <div className="max-w-[85%] bg-ink-black text-paper-white px-4 py-3 rounded-none border border-ink-black shadow-xs space-y-1">
+                    <div key={msg.id} className="flex justify-end gap-2.5 animate-fadeIn">
+                      <div className="max-w-[85%] sm:max-w-[78%] bg-ink-black text-paper-white px-4 py-3 border border-ink-black shadow-xs space-y-1">
                         <div className="flex items-center justify-between gap-4 text-[10.5px] font-mono text-paper-white/60">
-                          <span>Pertanyaan Pengguna</span>
+                          <span className="font-semibold text-paper-white/80">Anda</span>
                           <span>
                             {new Date(msg.timestamp).toLocaleTimeString("id-ID", {
                               hour: "2-digit",
@@ -402,225 +467,277 @@ export const CommandBarModal: React.FC = () => {
                             })}
                           </span>
                         </div>
-                        <p className="text-[14.5px] leading-relaxed font-medium">
+                        <p className="text-[14px] leading-relaxed font-normal whitespace-pre-wrap">
                           {msg.content}
                         </p>
+                      </div>
+                      <div className="w-7 h-7 bg-ink-black text-paper-white flex items-center justify-center shrink-0 text-[11px] font-mono border border-ink-black mt-1">
+                        <User className="w-3.5 h-3.5" />
                       </div>
                     </div>
                   );
                 }
 
-                // Assistant Response Bubble
+                // Assistant Response Bubble (Conversational Card)
                 const aiResult = msg.aiResult;
                 const effectiveChartType =
                   (activeChartTypes[msg.id] ||
                     aiResult?.chartRecommendation?.chartType ||
                     "bar") as ChartType;
+                const isSqlExpanded = expandedSqlIds[msg.id] !== false;
 
                 return (
-                  <div
-                    key={msg.id}
-                    className="flex flex-col space-y-3 p-5 bg-fog-white border border-slate-gray/25 shadow-xs animate-fadeIn text-left"
-                  >
-                    {/* Header */}
-                    <div className="flex items-center justify-between border-b border-slate-gray/15 pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 bg-sienna-brown inline-block" />
-                        <span className="text-[12px] font-mono uppercase font-bold text-sienna-brown tracking-wider">
-                          DataLoka AI Assistant
+                  <div key={msg.id} className="flex items-start gap-2.5 animate-fadeIn">
+                    {/* Assistant Avatar */}
+                    <div className="w-7 h-7 bg-sienna-brown/10 border border-sienna-brown/30 flex items-center justify-center shrink-0 mt-1">
+                      <Bot className="w-4 h-4 text-sienna-brown" />
+                    </div>
+
+                    {/* Chat Bubble Container */}
+                    <div className="flex-1 min-w-0 bg-paper-white border border-slate-gray/25 shadow-2xs p-4 sm:p-5 space-y-4 text-left">
+                      {/* Bubble Header */}
+                      <div className="flex items-center justify-between border-b border-slate-gray/15 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-signifier font-bold text-ink-black">
+                            DataLoka AI
+                          </span>
+                          {aiResult?.confidence !== undefined && (
+                            <span className="text-[10px] font-mono bg-[#ecfdf5] text-[#059669] px-1.5 py-0.5 border border-[#a7f3d0] font-semibold">
+                              Keyakinan {Math.round(aiResult.confidence * 100)}%
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-gray/70">
+                          {new Date(msg.timestamp).toLocaleTimeString("id-ID", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>
                       </div>
-                      {aiResult?.confidence !== undefined && (
-                        <span className="text-[11px] font-mono bg-[#ecfdf5] text-[#059669] px-2 py-0.5 border border-[#a7f3d0]">
-                          Keyakinan {Math.round(aiResult.confidence * 100)}%
-                        </span>
-                      )}
-                    </div>
 
-                    {/* Answer Narrative */}
-                    <div className="text-[14.5px] text-ink-black leading-relaxed font-normal">
-                      {msg.content}
-                    </div>
+                      {/* Conversational Text / Markdown Response */}
+                      <div className="prose prose-sm max-w-none text-ink-black">
+                        {renderFormattedNarrative(msg.content)}
+                      </div>
 
-                    {/* SQL Equivalent Block */}
-                    {aiResult?.sqlEquivalent && (
-                      <div className="bg-mist-gray border border-slate-gray/25 p-3 font-mono text-[12px] text-ink-black relative group">
-                        <div className="flex items-center justify-between mb-1.5 text-slate-gray text-[10.5px] uppercase tracking-wider">
-                          <span>Query SQL Terkompilasi</span>
+                      {/* Collapsible SQL Accordion */}
+                      {aiResult?.sqlEquivalent && (
+                        <div className="border border-slate-gray/20 bg-fog-white/60">
                           <button
                             type="button"
-                            onClick={() => handleCopySql(aiResult.sqlEquivalent!, msg.id)}
-                            className="flex items-center gap-1 text-slate-gray hover:text-ink-black bg-paper-white px-2 py-0.5 border border-slate-gray/20 transition cursor-pointer"
+                            onClick={() => toggleSqlExpand(msg.id)}
+                            className="w-full flex items-center justify-between px-3 py-2 text-left text-[11.5px] font-mono text-slate-gray hover:text-ink-black transition cursor-pointer"
                           >
-                            {copiedSqlId === msg.id ? (
-                              <>
-                                <Check className="w-3 h-3 text-[#059669]" />
-                                <span className="text-[#059669]">Tersalin</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3 h-3" />
-                                <span>Salin SQL</span>
-                              </>
-                            )}
+                            <div className="flex items-center gap-2">
+                              <Code2 className="w-3.5 h-3.5 text-sienna-brown" />
+                              <span className="font-semibold uppercase tracking-wider">
+                                {isSqlExpanded ? "Sembunyikan SQL & Logika Kueri" : "Lihat SQL & Logika Kueri"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isSqlExpanded ? (
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              ) : (
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              )}
+                            </div>
                           </button>
-                        </div>
-                        <code className="block overflow-x-auto text-[11.5px] text-ink-black/90 whitespace-pre-wrap">
-                          {aiResult.sqlEquivalent}
-                        </code>
-                      </div>
-                    )}
 
-                    {/* Full-Height ECharts Visualization Container */}
-                    {aiResult?.chartRecommendation &&
-                      aiResult.chartRecommendation.data.length > 0 && (
-                        <div className="pt-3 border-t border-slate-gray/15 space-y-3">
-                          {/* Chart Toolbar */}
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-[11px] font-mono uppercase font-bold text-slate-gray">
-                              Visualisasi Data Terstruktur
-                            </span>
-
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {/* Chart Type Switchers */}
-                              <div className="flex items-center border border-slate-gray/20 bg-paper-white p-0.5">
-                                {[
-                                  { type: "bar", icon: BarChart3, label: "Bar" },
-                                  { type: "line", icon: LineChart, label: "Line" },
-                                  { type: "donut", icon: PieChart, label: "Donut" },
-                                  { type: "table", icon: TableIcon, label: "Tabel" },
-                                ].map((item) => {
-                                  const IconComp = item.icon;
-                                  const isActive = effectiveChartType === item.type;
-                                  return (
-                                    <button
-                                      key={item.type}
-                                      type="button"
-                                      onClick={() =>
-                                        handleChartTypeChange(msg.id, item.type as ChartType)
-                                      }
-                                      className={`p-1 text-[11px] font-mono flex items-center gap-1 transition cursor-pointer ${
-                                        isActive
-                                          ? "bg-sienna-brown text-paper-white"
-                                          : "text-slate-gray hover:text-ink-black hover:bg-mist-gray"
-                                      }`}
-                                      title={`Ubah ke ${item.label}`}
-                                    >
-                                      <IconComp className="w-3.5 h-3.5" />
-                                      <span className="hidden sm:inline">{item.label}</span>
-                                    </button>
-                                  );
-                                })}
+                          {/* Expanded SQL View */}
+                          {isSqlExpanded && (
+                            <div className="p-3 border-t border-slate-gray/20 bg-mist-gray/40 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10.5px] font-mono text-slate-gray uppercase">
+                                  Kueri SQL Terkompilasi:
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopySql(aiResult.sqlEquivalent!, msg.id)}
+                                  className="flex items-center gap-1 text-[11px] font-mono text-slate-gray hover:text-ink-black bg-paper-white px-2 py-0.5 border border-slate-gray/20 transition cursor-pointer"
+                                >
+                                  {copiedSqlId === msg.id ? (
+                                    <>
+                                      <Check className="w-3 h-3 text-[#059669]" />
+                                      <span className="text-[#059669]">Tersalin</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3 h-3" />
+                                      <span>Salin SQL</span>
+                                    </>
+                                  )}
+                                </button>
                               </div>
+                              <code className="block overflow-x-auto text-[11.5px] font-mono text-ink-black bg-paper-white p-2.5 border border-slate-gray/20 whitespace-pre-wrap">
+                                {aiResult.sqlEquivalent}
+                              </code>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
-                              {/* Pin to Dashboard Button */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const rec: ChartRecommendation = {
-                                    id: `ai_chart_${Date.now()}`,
-                                    chartType: effectiveChartType,
-                                    title: aiResult.chartRecommendation!.title,
-                                    subtitle: aiResult.chartRecommendation!.subtitle,
-                                    confidenceScore: aiResult.confidence,
-                                    reasoning: "Dihasilkan oleh Tanya Data AI",
-                                    yAxisColumns: ["Nilai"],
-                                    aggregationType: "sum",
-                                    data: aiResult.chartRecommendation!.data,
-                                    orderIndex: 0,
-                                    availableAlternativeTypes: ["bar", "line", "donut", "table"],
-                                  };
-                                  handlePinChart(rec, msg.id);
+                      {/* Interactive Visual Chart Card */}
+                      {aiResult?.chartRecommendation &&
+                        aiResult.chartRecommendation.data.length > 0 && (
+                          <div className="pt-2 space-y-3">
+                            {/* Chart Controls Bar */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-gray/15 pt-3">
+                              <span className="text-[11.5px] font-mono uppercase font-bold text-slate-gray">
+                                Visualisasi Rekomendasi
+                              </span>
+
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {/* Type Switcher */}
+                                <div className="flex items-center border border-slate-gray/20 bg-fog-white p-0.5">
+                                  {[
+                                    { type: "bar", icon: BarChart3, label: "Bar" },
+                                    { type: "line", icon: LineChart, label: "Line" },
+                                    { type: "donut", icon: PieChart, label: "Donut" },
+                                    { type: "table", icon: TableIcon, label: "Tabel" },
+                                  ].map((item) => {
+                                    const IconComp = item.icon;
+                                    const isActive = effectiveChartType === item.type;
+                                    return (
+                                      <button
+                                        key={item.type}
+                                        type="button"
+                                        onClick={() =>
+                                          handleChartTypeChange(msg.id, item.type as ChartType)
+                                        }
+                                        className={`px-2 py-1 text-[11px] font-mono flex items-center gap-1 transition cursor-pointer ${
+                                          isActive
+                                            ? "bg-sienna-brown text-paper-white font-medium"
+                                            : "text-slate-gray hover:text-ink-black hover:bg-mist-gray"
+                                        }`}
+                                        title={`Ubah ke ${item.label}`}
+                                      >
+                                        <IconComp className="w-3 h-3" />
+                                        <span>{item.label}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+
+                                {/* Pin to Dashboard */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const rec: ChartRecommendation = {
+                                      id: `ai_chart_${Date.now()}`,
+                                      chartType: effectiveChartType,
+                                      title: aiResult.chartRecommendation!.title,
+                                      subtitle: aiResult.chartRecommendation!.subtitle,
+                                      confidenceScore: aiResult.confidence,
+                                      reasoning: "Dihasilkan oleh Tanya Data AI",
+                                      yAxisColumns: ["Nilai"],
+                                      aggregationType: "sum",
+                                      data: aiResult.chartRecommendation!.data,
+                                      orderIndex: 0,
+                                      availableAlternativeTypes: ["bar", "line", "donut", "table"],
+                                    };
+                                    handlePinChart(rec, msg.id);
+                                  }}
+                                  className={`flex items-center gap-1 px-2.5 py-1 text-[11.5px] font-mono border transition cursor-pointer ${
+                                    pinnedChartId === msg.id
+                                      ? "bg-[#ecfdf5] border-[#a7f3d0] text-[#059669]"
+                                      : "bg-paper-white border-slate-gray/25 text-ink-black hover:border-sienna-brown"
+                                  }`}
+                                >
+                                  {pinnedChartId === msg.id ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Tersimpan di Dasbor</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Pin className="w-3.5 h-3.5 text-sienna-brown" />
+                                      <span>Pin ke Dasbor</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Chart Canvas */}
+                            <div className="bg-paper-white p-3 border border-slate-gray/20 shadow-2xs">
+                              <UniversalChartRenderer
+                                recommendation={{
+                                  id: `chart_${msg.id}`,
+                                  chartType: effectiveChartType,
+                                  title: aiResult.chartRecommendation.title,
+                                  subtitle: aiResult.chartRecommendation.subtitle,
+                                  confidenceScore: aiResult.confidence,
+                                  reasoning: "AI Generated",
+                                  yAxisColumns: ["Nilai"],
+                                  aggregationType: "sum",
+                                  data: aiResult.chartRecommendation.data,
+                                  orderIndex: 0,
+                                  availableAlternativeTypes: ["bar", "line", "donut", "table"],
                                 }}
-                                className={`flex items-center gap-1 px-2.5 py-1 text-[11.5px] font-mono border transition cursor-pointer ${
-                                  pinnedChartId === msg.id
-                                    ? "bg-[#ecfdf5] border-[#a7f3d0] text-[#059669]"
-                                    : "bg-paper-white border-slate-gray/25 text-ink-black hover:border-sienna-brown"
-                                }`}
-                              >
-                                {pinnedChartId === msg.id ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5" />
-                                    <span>Tersimpan di Dasbor</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Pin className="w-3.5 h-3.5 text-sienna-brown" />
-                                    <span>Pin ke Dasbor</span>
-                                  </>
-                                )}
-                              </button>
+                                height={320}
+                              />
                             </div>
                           </div>
+                        )}
 
-                          {/* Render UniversalChartRenderer with full height (340px) */}
-                          <div className="bg-paper-white p-3 border border-slate-gray/20 shadow-xs">
-                            <UniversalChartRenderer
-                              recommendation={{
-                                id: `chart_${msg.id}`,
-                                chartType: effectiveChartType,
-                                title: aiResult.chartRecommendation.title,
-                                subtitle: aiResult.chartRecommendation.subtitle,
-                                confidenceScore: aiResult.confidence,
-                                reasoning: "AI Generated",
-                                yAxisColumns: ["Nilai"],
-                                aggregationType: "sum",
-                                data: aiResult.chartRecommendation.data,
-                                orderIndex: 0,
-                                availableAlternativeTypes: ["bar", "line", "donut", "table"],
-                              }}
-                              height={340}
-                            />
+                      {/* Suggested Follow-up Prompt Chips */}
+                      {aiResult?.suggestedFollowUps &&
+                        aiResult.suggestedFollowUps.length > 0 && (
+                          <div className="pt-2 border-t border-slate-gray/15 space-y-1.5">
+                            <span className="text-[10.5px] font-mono text-slate-gray uppercase font-semibold">
+                              Pertanyaan Lanjutan Terkait:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {aiResult.suggestedFollowUps.map((fu, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => handleAskAi(fu)}
+                                  className="px-2.5 py-1 text-[12px] bg-fog-white border border-slate-gray/20 hover:border-sienna-brown text-ink-black cursor-pointer transition font-mono hover:bg-mist-gray flex items-center gap-1.5"
+                                >
+                                  {fu} &rarr;
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
-
-                    {/* Follow-up Question Chips */}
-                    {aiResult?.suggestedFollowUps &&
-                      aiResult.suggestedFollowUps.length > 0 && (
-                        <div className="pt-3 border-t border-slate-gray/15 flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[11px] font-mono text-slate-gray">
-                            Lanjutan:
-                          </span>
-                          {aiResult.suggestedFollowUps.map((fu, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => handleAskAi(fu)}
-                              className="px-2.5 py-1 text-[11.5px] bg-paper-white border border-slate-gray/25 hover:border-ink-black text-ink-black cursor-pointer transition font-mono"
-                            >
-                              {fu} &rarr;
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                        )}
+                    </div>
                   </div>
                 );
               })}
 
-              {/* AI Loading State Indicator */}
+              {/* Seamless AI Thinking / Loading Bubble */}
               {isAiLoading && (
-                <div className="p-4 bg-fog-white border border-sienna-brown/25 flex items-center gap-3 animate-pulse">
-                  <div className="w-4 h-4 border-2 border-sienna-brown border-t-transparent animate-spin rounded-none" />
-                  <span className="text-[13px] font-mono text-sienna-brown font-medium">
-                    Menganalisis dataset dan mengompilasi visualisasi...
-                  </span>
+                <div className="flex items-start gap-2.5 animate-fadeIn">
+                  <div className="w-7 h-7 bg-sienna-brown/10 border border-sienna-brown/30 flex items-center justify-center shrink-0 mt-1">
+                    <Sparkles className="w-4 h-4 text-sienna-brown animate-spin" />
+                  </div>
+                  <div className="bg-paper-white border border-sienna-brown/30 p-3.5 shadow-2xs flex items-center gap-3">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-sienna-brown rounded-full animate-bounce [animation-delay:-0.3s]" />
+                      <div className="w-2 h-2 bg-sienna-brown rounded-full animate-bounce [animation-delay:-0.15s]" />
+                      <div className="w-2 h-2 bg-sienna-brown rounded-full animate-bounce" />
+                    </div>
+                    <span className="text-[13px] font-mono text-sienna-brown font-medium">
+                      DataLoka AI sedang menganalisis dataset...
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        {/* Bottom Sticky Composer Bar */}
-        <div className="p-4 border-t border-slate-gray/20 bg-fog-white shrink-0 space-y-2">
-          <div className="flex items-center gap-2 bg-paper-white border border-slate-gray/30 px-3 py-2 shadow-xs focus-within:border-sienna-brown transition">
+        {/* Bottom Chatbot Composer Bar */}
+        <div className="p-3.5 sm:p-4 border-t border-slate-gray/20 bg-paper-white shrink-0 space-y-2 shadow-lg">
+          <div className="flex items-center gap-2 bg-fog-white border border-slate-gray/30 px-3 py-2.5 shadow-2xs focus-within:border-sienna-brown focus-within:bg-paper-white transition">
             <span className="text-sienna-brown shrink-0 select-none">
               <Sparkles className="w-4 h-4" />
             </span>
             <input
               ref={inputRef}
               type="text"
-              placeholder="Ask anything… (misal: 'Berapa total omset?', 'Top 3 wilayah')"
+              placeholder="Ask anything… (misal: 'Produk apa yang paling laku?', 'Berapa total omset?')"
               value={inputQuery}
               onChange={(e) => {
                 setInputQuery(e.target.value);
@@ -628,7 +745,7 @@ export const CommandBarModal: React.FC = () => {
               }}
               onKeyDown={handleKeyDown}
               disabled={isAiLoading}
-              className="flex-1 bg-transparent text-[14.5px] text-ink-black placeholder:text-smoke-gray focus:outline-none disabled:opacity-50"
+              className="flex-1 bg-transparent text-[14px] text-ink-black placeholder:text-smoke-gray focus:outline-none disabled:opacity-50"
             />
             <button
               type="button"
@@ -638,30 +755,31 @@ export const CommandBarModal: React.FC = () => {
                 }
               }}
               disabled={!inputQuery.trim() || isAiLoading}
-              className="p-1.5 bg-sienna-brown hover:bg-sienna-brown/90 disabled:opacity-40 text-paper-white transition cursor-pointer shrink-0"
+              className="px-2.5 py-1.5 bg-sienna-brown hover:bg-sienna-brown/90 disabled:opacity-40 text-paper-white transition cursor-pointer shrink-0 flex items-center gap-1.5 text-[12px] font-mono font-medium shadow-xs"
               title="Kirim Pertanyaan (Enter)"
             >
-              <Send className="w-3.5 h-3.5" />
+              <span>Kirim</span>
+              <Send className="w-3 h-3" />
             </button>
           </div>
 
           <div className="flex items-center justify-between text-[11px] font-mono text-slate-gray px-1">
             <div className="flex items-center gap-3">
-              <span>
-                <kbd className="px-1 py-0.5 bg-paper-white border border-slate-gray/20 text-[10px] mr-1">
-                  ↵
+              <span className="flex items-center gap-1">
+                <kbd className="px-1 py-0.5 bg-fog-white border border-slate-gray/25 text-[10px]">
+                  <CornerDownLeft className="w-2.5 h-2.5 inline" /> Enter
                 </kbd>
-                Tanya AI
+                Kirim
               </span>
               <span>
-                <kbd className="px-1 py-0.5 bg-paper-white border border-slate-gray/20 text-[10px] mr-1">
+                <kbd className="px-1 py-0.5 bg-fog-white border border-slate-gray/25 text-[10px]">
                   ESC
                 </kbd>
                 Tutup
               </span>
             </div>
-            <span className="text-sienna-brown font-semibold">
-              DataLoka AI Engine
+            <span className="text-sienna-brown font-medium">
+              DataLoka AI Analyst
             </span>
           </div>
         </div>
@@ -669,3 +787,4 @@ export const CommandBarModal: React.FC = () => {
     </div>
   );
 };
+

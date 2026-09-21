@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { ChartRecommendation, ChartType } from "@/types/chart";
 import type { DatasetMapping } from "@/types/mapping";
 import type { DashboardAccentCard, DashboardState, TemplateId } from "@/types/template";
@@ -96,14 +97,16 @@ interface DashboardStoreState {
   reset: () => void;
 }
 
-export const useDashboardStore = create<DashboardStoreState>((set) => ({
-  dashboard: null,
-  activeTemplateId: "general",
-  globalCategoryFilter: null,
-  searchFilter: "",
-  datePreset: "all",
-  customDateRange: null,
-  isEditingLayout: false,
+export const useDashboardStore = create<DashboardStoreState>()(
+  persist(
+    (set) => ({
+      dashboard: null,
+      activeTemplateId: "general",
+      globalCategoryFilter: null,
+      searchFilter: "",
+      datePreset: "all",
+      customDateRange: null,
+      isEditingLayout: false,
 
   initializeFromEngine: (
     datasetId,
@@ -273,15 +276,29 @@ export const useDashboardStore = create<DashboardStoreState>((set) => ({
     set((state) => ({ isEditingLayout: !state.isEditingLayout }));
   },
 
-  reset: () => {
-    set({
-      dashboard: null,
-      activeTemplateId: "general",
-      globalCategoryFilter: null,
-      searchFilter: "",
-      datePreset: "all",
-      customDateRange: null,
-      isEditingLayout: false,
-    });
-  },
-}));
+    reset: () => {
+      set({
+        dashboard: null,
+        activeTemplateId: "general",
+        globalCategoryFilter: null,
+        searchFilter: "",
+        datePreset: "all",
+        customDateRange: null,
+        isEditingLayout: false,
+      });
+    },
+    }),
+    {
+      name: "dataloka_dashboard_storage",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        dashboard: state.dashboard,
+        activeTemplateId: state.activeTemplateId,
+        globalCategoryFilter: state.globalCategoryFilter,
+        searchFilter: state.searchFilter,
+        datePreset: state.datePreset,
+        customDateRange: state.customDateRange,
+      }),
+    }
+  )
+);

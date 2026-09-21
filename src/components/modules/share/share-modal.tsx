@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useInsightStore } from "@/stores/insight-store";
 import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 
 export const ShareModal: React.FC = () => {
   const { isShareModalOpen, closeShareModal, shareUrl } = useInsightStore();
@@ -46,9 +47,10 @@ export const ShareModal: React.FC = () => {
           <button
             type="button"
             onClick={closeShareModal}
-            className="text-slate-gray hover:text-ink-black p-1.5 rounded-none hover:bg-mist-gray transition cursor-pointer"
+            className="flex items-center justify-center w-8 h-8 rounded-none bg-mist-gray hover:bg-ink-black text-ink-black hover:text-paper-white border border-slate-gray/30 hover:border-ink-black transition-all cursor-pointer shadow-2xs group"
+            aria-label="Tutup dialog bagikan"
           >
-            ✕
+            <X className="w-4 h-4 stroke-[2.5] transition-transform group-hover:scale-110" />
           </button>
         </div>
 

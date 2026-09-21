@@ -37,21 +37,41 @@ export class AiQueryEngine {
       }
     }
 
-    // Match metric column mentioned in prompt or default to first metric
-    let targetMetricColumn = metricCols[0]?.columnName || headers[0];
-    for (const col of metricCols) {
-      if (lower.includes(col.columnName.toLowerCase()) || lower.includes(col.standardizedAlias.replace("metrik_", ""))) {
-        targetMetricColumn = col.columnName;
-        break;
+
+    // Smart matching for dimension
+    let targetDimensionColumn = dimCols[0]?.columnName || headers.find((h) => h !== targetMetricColumn) || headers[0];
+    if (/produk|barang|item|sku/i.test(lower)) {
+      const prodCol = dimCols.find((c) => /produk|nama_barang|item|sku|kategori/i.test(c.columnName));
+      if (prodCol) targetDimensionColumn = prodCol.columnName;
+    } else if (/wilayah|kota|daerah|lokasi/i.test(lower)) {
+      const locCol = dimCols.find((c) => /wilayah|kota|provinsi|lokasi|area|cabang/i.test(c.columnName));
+      if (locCol) targetDimensionColumn = locCol.columnName;
+    } else if (/kategori|category/i.test(lower)) {
+      const catCol = dimCols.find((c) => /kategori|category/i.test(c.columnName));
+      if (catCol) targetDimensionColumn = catCol.columnName;
+    } else {
+      for (const col of dimCols) {
+        if (lower.includes(col.columnName.toLowerCase()) || lower.includes(col.standardizedAlias.replace("dim_", ""))) {
+          targetDimensionColumn = col.columnName;
+          break;
+        }
       }
     }
 
-    // Match dimension column mentioned in prompt or default to first dimension
-    let targetDimensionColumn = dimCols[0]?.columnName || headers.find((h) => h !== targetMetricColumn) || headers[0];
-    for (const col of dimCols) {
-      if (lower.includes(col.columnName.toLowerCase()) || lower.includes(col.standardizedAlias.replace("dim_", ""))) {
-        targetDimensionColumn = col.columnName;
-        break;
+    // Smart matching for metric
+    let targetMetricColumn = metricCols[0]?.columnName || headers[1] || headers[0];
+    if (/omset|pendapatan|sales|penjualan|rupiah|duit|uang|harga/i.test(lower)) {
+      const salesCol = metricCols.find((c) => /penjualan|omset|omzet|revenue|harga|subtotal/i.test(c.columnName));
+      if (salesCol) targetMetricColumn = salesCol.columnName;
+    } else if (/jumlah|qty|kuantitas|unit|pesanan|volume|banyak/i.test(lower)) {
+      const qtyCol = metricCols.find((c) => /jumlah|qty|volume|pesanan|unit/i.test(c.columnName));
+      if (qtyCol) targetMetricColumn = qtyCol.columnName;
+    } else {
+      for (const col of metricCols) {
+        if (lower.includes(col.columnName.toLowerCase()) || lower.includes(col.standardizedAlias.replace("metrik_", ""))) {
+          targetMetricColumn = col.columnName;
+          break;
+        }
       }
     }
 
@@ -60,11 +80,15 @@ export class AiQueryEngine {
     let recommendedChartType: ChartType = "bar";
     let confidence = 0.85;
 
-    if (/terbawah|terendah|bottom|paling sedikit|terkecil/i.test(lower)) {
+    if (/faktor|penyebab|kenapa|mengapa|karena|driver|analisis|evaluasi/i.test(lower) && /laku|laris|jual|beli|performa/i.test(lower)) {
+      intent = "top_ranking";
+      recommendedChartType = "bar";
+      confidence = 0.94;
+    } else if (/terbawah|terendah|bottom|paling sedikit|terkecil|tidak laku|kurang laku/i.test(lower)) {
       intent = "bottom_ranking";
       recommendedChartType = "bar";
       confidence = 0.92;
-    } else if (/teratas|tertinggi|top|terbesar|paling laris|paling banyak|juara/i.test(lower)) {
+    } else if (/teratas|tertinggi|top|terbesar|paling laris|paling banyak|juara|laku/i.test(lower)) {
       intent = "top_ranking";
       recommendedChartType = "bar";
       confidence = 0.95;
@@ -165,57 +189,79 @@ export class AiQueryEngine {
     const totalSum = aggregatedArray.reduce((acc, curr) => acc + curr.value, 0);
     const avgVal = aggregatedArray.length > 0 ? totalSum / aggregatedArray.length : 0;
 
-    let answerText = "";
-    let calculatedValue: string | number = totalSum;
-    let sqlEquivalent = "";
-
     const formatNum = (num: number) => {
       return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(num);
     };
 
-    switch (intent) {
-      case "top_ranking":
-        answerText = `Berikut adalah ${limit} ${targetDimensionColumn} teratas berdasarkan ${targetMetricColumn}. Peringkat tertinggi diraih oleh **${limitedResults[0]?.label || "N/A"}** dengan nilai ${currencySymbol} ${formatNum(limitedResults[0]?.value || 0)}.`;
-        calculatedValue = limitedResults[0]?.value || 0;
-        sqlEquivalent = `SELECT ${targetDimensionColumn}, SUM(${targetMetricColumn}) AS total FROM dataset GROUP BY ${targetDimensionColumn} ORDER BY total DESC LIMIT ${limit};`;
-        break;
+    const isFactorQuestion = /faktor|penyebab|kenapa|mengapa|driver|laku/i.test(prompt);
 
-      case "bottom_ranking":
-        answerText = `Berikut adalah ${limit} ${targetDimensionColumn} dengan performa terendah berdasarkan ${targetMetricColumn}. Terendah adalah **${limitedResults[0]?.label || "N/A"}** senilai ${currencySymbol} ${formatNum(limitedResults[0]?.value || 0)}.`;
-        calculatedValue = limitedResults[0]?.value || 0;
-        sqlEquivalent = `SELECT ${targetDimensionColumn}, SUM(${targetMetricColumn}) AS total FROM dataset GROUP BY ${targetDimensionColumn} ORDER BY total ASC LIMIT ${limit};`;
-        break;
+    let answerText = "";
+    let calculatedValue: string | number = totalSum;
+    let sqlEquivalent = "";
 
-      case "aggregate_avg":
-        answerText = `Rata-rata ${targetMetricColumn} per ${targetDimensionColumn} adalah ${currencySymbol} ${formatNum(avgVal)} dihitung dari total ${aggregatedArray.length} kelompok.`;
-        calculatedValue = Math.round(avgVal * 100) / 100;
-        sqlEquivalent = `SELECT ${targetDimensionColumn}, AVG(${targetMetricColumn}) AS rata_rata FROM dataset GROUP BY ${targetDimensionColumn};`;
-        break;
+    if (isFactorQuestion && limitedResults.length > 0) {
+      const top1 = limitedResults[0];
+      const top3Share = totalSum > 0 ? Math.round((limitedResults.slice(0, 3).reduce((acc, c) => acc + c.value, 0) / totalSum) * 100) : 0;
+      const top1Share = totalSum > 0 ? Math.round((top1.value / totalSum) * 100) : 0;
 
-      case "aggregate_count":
-        answerText = `Total rekaman data yang dianalisis adalah ${rows.length} baris dengan ${aggregatedArray.length} kategori unik pada kolom ${targetDimensionColumn}.`;
-        calculatedValue = rows.length;
-        sqlEquivalent = `SELECT COUNT(*) AS total_records, COUNT(DISTINCT ${targetDimensionColumn}) AS unique_categories FROM dataset;`;
-        break;
+      answerText = `Berdasarkan analisis performa penjualan pada dataset Anda:\n\n` +
+        `1. **Produk & Segmen Paling Mendominasi**:\n` +
+        `   - **${top1.label}** memimpin sebagai kontributor utama dengan total ${currencySymbol} ${formatNum(top1.value)} (${top1Share}% dari total pendapatan).\n` +
+        (limitedResults[1] ? `   - Diikuti oleh **${limitedResults[1].label}** (${currencySymbol} ${formatNum(limitedResults[1].value)}) dan **${limitedResults[2]?.label || "Lainnya"}**.\n\n` : `\n`) +
+        `2. **Faktor Kunci Pendorong Penjualan**:\n` +
+        `   - **Konsentrasi Penjualan**: Top 3 segmen menguasai sekitar **${top3Share}%** omset bisnis Anda, menunjukkan preferensi pasar yang sangat kuat pada kategori ini.\n` +
+        `   - **Frekuensi Permintaan**: Volume pesanan yang konsisten pada segmen unggulan menjadi penggerak utama pertumbuhan.\n\n` +
+        `3. **Rekomendasi Aksi**:\n` +
+        `   - Prioritaskan ketersediaan stok (*safety stock*) untuk **${top1.label}** guna menghindari kehilangan peluang omset.\n` +
+        `   - Terapkan strategi *cross-selling* / bundling antara produk terlaris dengan produk di kelompok bawah untuk mendongkrak Average Order Value (AOV).`;
 
-      case "trend_analysis":
-        answerText = `Analisis tren ${targetMetricColumn} menunjukkan agregasi lintas dimensi waktu/urutan ${targetDimensionColumn} dengan total akumulasi ${currencySymbol} ${formatNum(totalSum)}.`;
-        calculatedValue = totalSum;
-        sqlEquivalent = `SELECT ${targetDimensionColumn}, SUM(${targetMetricColumn}) FROM dataset GROUP BY ${targetDimensionColumn} ORDER BY ${targetDimensionColumn} ASC;`;
-        break;
+      calculatedValue = top1.value;
+      sqlEquivalent = `SELECT ${targetDimensionColumn}, SUM(${targetMetricColumn}) AS total FROM dataset GROUP BY ${targetDimensionColumn} ORDER BY total DESC LIMIT ${limit};`;
+    } else {
+      switch (intent) {
+        case "top_ranking":
+          answerText = `Berikut adalah ${limit} ${targetDimensionColumn} teratas berdasarkan ${targetMetricColumn}. Peringkat tertinggi diraih oleh **${limitedResults[0]?.label || "N/A"}** dengan nilai ${currencySymbol} ${formatNum(limitedResults[0]?.value || 0)}.`;
+          calculatedValue = limitedResults[0]?.value || 0;
+          sqlEquivalent = `SELECT ${targetDimensionColumn}, SUM(${targetMetricColumn}) AS total FROM dataset GROUP BY ${targetDimensionColumn} ORDER BY total DESC LIMIT ${limit};`;
+          break;
 
-      case "explain_dataset":
-        answerText = `Dataset ini memuat ${rows.length} baris dengan ${headers.length} kolom: [${headers.join(", ")}]. Nilai agregat tertinggi berada pada segmen ${limitedResults[0]?.label || "-"}.`;
-        calculatedValue = rows.length;
-        sqlEquivalent = `DESCRIBE dataset; -- Total Rows: ${rows.length}`;
-        break;
+        case "bottom_ranking":
+          answerText = `Berikut adalah ${limit} ${targetDimensionColumn} dengan performa terendah berdasarkan ${targetMetricColumn}. Terendah adalah **${limitedResults[0]?.label || "N/A"}** senilai ${currencySymbol} ${formatNum(limitedResults[0]?.value || 0)}.`;
+          calculatedValue = limitedResults[0]?.value || 0;
+          sqlEquivalent = `SELECT ${targetDimensionColumn}, SUM(${targetMetricColumn}) AS total FROM dataset GROUP BY ${targetDimensionColumn} ORDER BY total ASC LIMIT ${limit};`;
+          break;
 
-      case "aggregate_sum":
-      default:
-        answerText = `Total keseluruhan ${targetMetricColumn} adalah ${currencySymbol} ${formatNum(totalSum)} yang tersebar di ${aggregatedArray.length} kelompok ${targetDimensionColumn}.`;
-        calculatedValue = totalSum;
-        sqlEquivalent = `SELECT ${targetDimensionColumn}, SUM(${targetMetricColumn}) AS total FROM dataset GROUP BY ${targetDimensionColumn};`;
-        break;
+        case "aggregate_avg":
+          answerText = `Rata-rata ${targetMetricColumn} per ${targetDimensionColumn} adalah ${currencySymbol} ${formatNum(avgVal)} dihitung dari total ${aggregatedArray.length} kelompok.`;
+          calculatedValue = Math.round(avgVal * 100) / 100;
+          sqlEquivalent = `SELECT ${targetDimensionColumn}, AVG(${targetMetricColumn}) AS rata_rata FROM dataset GROUP BY ${targetDimensionColumn};`;
+          break;
+
+        case "aggregate_count":
+          answerText = `Total rekaman data yang dianalisis adalah ${rows.length} baris dengan ${aggregatedArray.length} kategori unik pada kolom ${targetDimensionColumn}.`;
+          calculatedValue = rows.length;
+          sqlEquivalent = `SELECT COUNT(*) AS total_records, COUNT(DISTINCT ${targetDimensionColumn}) AS unique_categories FROM dataset;`;
+          break;
+
+        case "trend_analysis":
+          answerText = `Analisis tren ${targetMetricColumn} menunjukkan agregasi lintas dimensi waktu/urutan ${targetDimensionColumn} dengan total akumulasi ${currencySymbol} ${formatNum(totalSum)}.`;
+          calculatedValue = totalSum;
+          sqlEquivalent = `SELECT ${targetDimensionColumn}, SUM(${targetMetricColumn}) FROM dataset GROUP BY ${targetDimensionColumn} ORDER BY ${targetDimensionColumn} ASC;`;
+          break;
+
+        case "explain_dataset":
+          answerText = `Dataset ini memuat ${rows.length} baris dengan ${headers.length} kolom: [${headers.join(", ")}]. Nilai agregat tertinggi berada pada segmen ${limitedResults[0]?.label || "-"}.`;
+          calculatedValue = rows.length;
+          sqlEquivalent = `DESCRIBE dataset; -- Total Rows: ${rows.length}`;
+          break;
+
+        case "aggregate_sum":
+        default:
+          answerText = `Total keseluruhan ${targetMetricColumn} adalah ${currencySymbol} ${formatNum(totalSum)} yang tersebar di ${aggregatedArray.length} kelompok ${targetDimensionColumn}.`;
+          calculatedValue = totalSum;
+          sqlEquivalent = `SELECT ${targetDimensionColumn}, SUM(${targetMetricColumn}) AS total FROM dataset GROUP BY ${targetDimensionColumn};`;
+          break;
+      }
     }
 
     return {

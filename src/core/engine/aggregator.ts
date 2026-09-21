@@ -1,14 +1,7 @@
 import type { DatasetRow } from "@/types/dataset";
 import type { AggregationType, DataPoint, KpiMetric } from "@/types/chart";
 import { parseFlexibleDate } from "@/core/mapping/date-normalizer";
-
-function extractNumeric(val: unknown): number {
-  if (typeof val === "number") return isNaN(val) ? 0 : val;
-  if (!val) return 0;
-  const str = String(val).replace(/^(rp|idr|\$)\s*/i, "").replace(/,/g, "").trim();
-  const num = parseFloat(str);
-  return isNaN(num) ? 0 : num;
-}
+import { normalizeCategoryValue, sanitizeNumericValue } from "@/core/quality/data-sanitizer";
 
 export function formatCurrencyIDR(val: number): string {
   return new Intl.NumberFormat("id-ID", {
@@ -37,11 +30,9 @@ export function aggregateByCategory(
 
   for (const row of rows) {
     const rawCat = row[categoryCol];
-    const cat = rawCat !== null && rawCat !== undefined && String(rawCat).trim() !== ""
-      ? String(rawCat).trim()
-      : "Tidak Diketahui";
+    const cat = normalizeCategoryValue(rawCat, categoryCol);
 
-    const val = extractNumeric(row[valueCol]);
+    const val = sanitizeNumericValue(row[valueCol]);
 
     const entry = groupMap.get(cat) || { sum: 0, count: 0, min: Infinity, max: -Infinity };
     entry.sum += val;
@@ -129,7 +120,7 @@ export function aggregateByDate(
     const entry = dateMap.get(dateKey)!;
 
     for (const vCol of valueCols) {
-      const numVal = extractNumeric(row[vCol]);
+      const numVal = sanitizeNumericValue(row[vCol]);
       if (!entry.values[vCol]) {
         entry.values[vCol] = { sum: 0, count: 0 };
       }
@@ -180,7 +171,7 @@ export function computeKpiMetric(
   let totalSum = 0;
 
   for (const row of rows) {
-    const val = extractNumeric(row[valueCol]);
+    const val = sanitizeNumericValue(row[valueCol]);
     totalSum += val;
   }
 
@@ -209,7 +200,7 @@ export function computeKpiMetric(
     }
   }
 
-    return {
+  return {
     title,
     value: total,
     formattedValue,
@@ -229,8 +220,8 @@ export function computeAovKpiMetric(
   let totalOrders = 0;
 
   for (const row of rows) {
-    totalRevenue += extractNumeric(row[revenueCol]);
-    totalOrders += extractNumeric(row[ordersCol]);
+    totalRevenue += sanitizeNumericValue(row[revenueCol]);
+    totalOrders += sanitizeNumericValue(row[ordersCol]);
   }
 
   const aovValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
@@ -271,4 +262,3 @@ export function computeAovKpiMetric(
     sparklineData,
   };
 }
-

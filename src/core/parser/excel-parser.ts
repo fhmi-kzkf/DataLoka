@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import type { DatasetSchema, DatasetRow, DatasetValue, ParseProgressEvent } from "@/types/dataset";
 import { cleanHeaderName } from "./csv-parser";
+import { sanitizeAndEngineerDataset } from "@/core/quality/data-sanitizer";
 
 export interface ParseExcelOptions {
   name?: string;
@@ -117,7 +118,7 @@ export async function parseExcelArrayBuffer(
     message: "Parsing Excel selesai",
   });
 
-  return {
+  const rawDataset: DatasetSchema = {
     id: `ds_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     name,
     sourceType: "file",
@@ -131,4 +132,6 @@ export async function parseExcelArrayBuffer(
     sampleRows: rows.slice(0, 5),
     createdAt: new Date().toISOString(),
   };
+
+  return sanitizeAndEngineerDataset(rawDataset);
 }

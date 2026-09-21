@@ -43,15 +43,41 @@ export default function DashboardPage() {
   const { openCommandBar } = useCommandStore();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
+  const [mounted, setMounted] = useState(false);
+
   useCommandBarShortcut();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const unsub = initializeAuth();
     return () => unsub();
   }, [initializeAuth]);
 
-  // Ensure workspace is never empty when opened: auto-initialize default executive dashboard if none exists
+  // Ensure workspace is never empty when opened: auto-initialize default executive dashboard ONLY if after mount there is no stored dataset and no stored dashboard
   useEffect(() => {
+    if (!mounted) return;
+
+    // Case 1: Stored dataset exists in localStorage but dashboard needs regeneration
+    if (dataset && !dashboard) {
+      const mappingObj = generateMapping(dataset);
+      const engineRes = generateRecommendations(dataset, mappingObj);
+      initializeFromEngine(
+        dataset.id,
+        dataset.name ? `Dashboard ${dataset.name.replace(/\.[^/.]+$/, "")}` : "Dashboard Performa Data",
+        "Ikhtisar terpadu visualisasi data, metrik performa, dan pola sebaran transaksi",
+        engineRes.kpiCards,
+        engineRes.mainCharts,
+        dataset.headers,
+        mappingObj,
+        "ecommerce"
+      );
+      return;
+    }
+
+    // Case 2: First-time visitor with zero stored dataset
     if (!dashboard && !dataset) {
       const datasetId = "workspace_primary_dataset";
       const headers = Object.keys(DEFAULT_WORKSPACE_DATA[0]);
@@ -83,7 +109,7 @@ export default function DashboardPage() {
         "ecommerce"
       );
     }
-  }, [dashboard, dataset, setDataset, generateMapping, generateRecommendations, initializeFromEngine]);
+  }, [mounted, dashboard, dataset, setDataset, generateMapping, generateRecommendations, initializeFromEngine]);
 
   const handleOpenShare = () => {
     if (dashboard) {

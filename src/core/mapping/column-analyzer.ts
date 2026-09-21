@@ -30,9 +30,12 @@ export function analyzeDatasetColumns(dataset: DatasetSchema): DatasetMapping {
     let effectiveType: DataType = typeDetection.inferredType;
     let confidenceScore = typeDetection.confidence;
 
-    // If dictionary matched with high confidence, prefer semantic type
-    if (dictMatch.confidence >= 0.85) {
-      if (dictMatch.role === "product_name" || dictMatch.role === "customer_name" || dictMatch.role === "identifier") {
+    // If header looks like an identifier, force text/identifier
+    if (/^(id_|no_|kode_|trx_|sku|uuid)/i.test(header) || /(_id|_code|_no)$/i.test(header) || dictMatch.role === "identifier") {
+      effectiveType = "text";
+      confidenceScore = 0.98;
+    } else if (dictMatch.confidence >= 0.85) {
+      if (dictMatch.role === "product_name" || dictMatch.role === "customer_name") {
         effectiveType = "text";
       } else if (dictMatch.suggestedType === "currency" && (effectiveType === "numeric" || effectiveType === "currency")) {
         effectiveType = "currency";
@@ -95,24 +98,37 @@ export function analyzeDatasetColumns(dataset: DatasetSchema): DatasetMapping {
   }
 
   // Two-pass primary dimension selection
+  // 1. Primary Date: must be datetime and not identifier
   for (const header of headers) {
     const col = columns[header];
     if (!col) continue;
 
-    if (col.effectiveType === "datetime" && !primaryDateColumn) {
+    if (col.effectiveType === "datetime" && col.semanticRole !== "identifier" && !/^(id_|no_|kode_|trx_)/i.test(header) && !primaryDateColumn) {
       primaryDateColumn = header;
     }
+  }
+
+  // 2. Primary Category: prioritize product_category, payment_method, or categorical columns with clean cardinality
+  for (const header of headers) {
+    const col = columns[header];
+    if (!col) continue;
 
     if (col.semanticRole === "product_category" && !primaryCategoryColumn) {
       primaryCategoryColumn = header;
-    } else if (col.effectiveType === "categorical" && col.cardinality >= 2 && !primaryCategoryColumn) {
+    } else if (col.semanticRole === "payment_method" && !primaryCategoryColumn) {
+      primaryCategoryColumn = header;
+    } else if (col.effectiveType === "categorical" && col.cardinality >= 2 && col.cardinality <= 30 && !primaryCategoryColumn) {
       primaryCategoryColumn = header;
     }
+  }
 
-    if ((col.effectiveType === "numeric" || col.effectiveType === "currency") && !primaryNumericColumn) {
-      if (col.semanticRole === "quantity_sold" || col.semanticRole === "revenue") {
-        primaryNumericColumn = header;
-      }
+  // 3. Primary Numeric: match quantity_sold or revenue in header order
+  for (const header of headers) {
+    const col = columns[header];
+    if (!col) continue;
+
+    if ((col.semanticRole === "quantity_sold" || col.semanticRole === "revenue") && !primaryNumericColumn) {
+      primaryNumericColumn = header;
     }
   }
 

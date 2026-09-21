@@ -8,6 +8,7 @@ import {
   computeAovKpiMetric,
 } from "./aggregator";
 import { humanizeColumnName, humanizeChartTitle } from "@/lib/formatters";
+import { sanitizeNumericValue } from "@/core/quality/data-sanitizer";
 
 export function evaluateHeuristicRules(
   dataset: DatasetSchema,
@@ -204,11 +205,14 @@ export function evaluateHeuristicRules(
     const colY = numCols[1].name;
     const humanX = humanizeColumnName(colX);
     const humanY = humanizeColumnName(colY);
-    const data = rows.slice(0, 50).map((r, idx) => ({
-      label: `Item ${idx + 1}`,
-      value: Number(r[colX]) || 0,
-      secondaryValue: Number(r[colY]) || 0,
-    }));
+    const data = rows.slice(0, 50).map((r, idx) => {
+      const itemLabel = String(r["nama_menu"] || r["Nama_Menu"] || r["produk"] || r["Produk"] || r["sku"] || r["SKU"] || `Item ${idx + 1}`);
+      return {
+        label: itemLabel,
+        value: sanitizeNumericValue(r[colX]),
+        secondaryValue: sanitizeNumericValue(r[colY]),
+      };
+    });
 
     recommendations.push({
       id: `chart_scatter_${colX}_${colY}_${orderIndex}`,

@@ -13,12 +13,15 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, firestore, isFirebaseConfigured } from "@/lib/firebase";
 import { Logger } from "@/lib/logger";
 import type { PlanTierId, BillingCycle } from "@/types/pricing";
+import type { UserRole, AccountStatus } from "@/types/admin";
 
 export interface AppUser {
   uid: string;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
+  role?: UserRole;
+  status?: AccountStatus;
   planTier: PlanTierId;
   subscriptionStatus?: "active" | "trial" | "expired";
   billingCycle?: BillingCycle;

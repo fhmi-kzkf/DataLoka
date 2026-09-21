@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import type { DatasetSchema, DatasetRow, ParseProgressEvent } from "@/types/dataset";
+import { sanitizeAndEngineerDataset } from "@/core/quality/data-sanitizer";
 
 export interface ParseCsvOptions {
   name?: string;
@@ -76,7 +77,7 @@ export function parseCsvContent(
           return reject(new Error("File CSV hanya berisi baris kosong"));
         }
 
-        const dataset: DatasetSchema = {
+        const rawDataset: DatasetSchema = {
           id: `ds_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           name,
           sourceType,
@@ -89,13 +90,15 @@ export function parseCsvContent(
           createdAt: new Date().toISOString(),
         };
 
+        const engineeredDataset = sanitizeAndEngineerDataset(rawDataset);
+
         onProgress?.({
           percentage: 100,
           stage: "completed",
           message: "Parsing CSV selesai",
         });
 
-        resolve(dataset);
+        resolve(engineeredDataset);
       },
       error: (error: Error) => {
         reject(new Error(`Kesalahan saat memproses CSV: ${error.message}`));

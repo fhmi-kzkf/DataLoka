@@ -15,13 +15,26 @@ interface CloudSaveModalProps {
 
 export const CloudSaveModal: React.FC<CloudSaveModalProps> = ({ isOpen, onClose }) => {
   const { user, openAuthModal } = useAuthStore();
-  const { title, subtitle, templateId, kpiCards, mainCharts, accentCard } = useDashboardStore();
+  const { dashboard, activeTemplateId } = useDashboardStore();
   const { dataset } = useDatasetStore();
+
+  const title = dashboard?.title || "Executive Dashboard";
+  const subtitle = dashboard?.subtitle || "Ringkasan performa dan visualisasi data";
+  const templateId = dashboard?.templateId || activeTemplateId || "general";
+  const kpiCards = dashboard?.kpiCards || [];
+  const mainCharts = dashboard?.mainCharts || [];
+  const accentCard = dashboard?.accentCard;
 
   const [customTitle, setCustomTitle] = useState(title);
   const [customSubtitle, setCustomSubtitle] = useState(subtitle);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Sync state if dashboard changes
+  React.useEffect(() => {
+    if (dashboard?.title) setCustomTitle(dashboard.title);
+    if (dashboard?.subtitle) setCustomSubtitle(dashboard.subtitle);
+  }, [dashboard?.title, dashboard?.subtitle]);
 
   if (!isOpen) return null;
 
@@ -32,12 +45,20 @@ export const CloudSaveModal: React.FC<CloudSaveModalProps> = ({ isOpen, onClose 
 
     const userId = user?.uid || "guest";
     const dashboardState = {
+      id: dashboard?.id || `dash_${Date.now()}`,
       title: customTitle || title,
       subtitle: customSubtitle || subtitle,
+      datasetId: dataset?.id || dashboard?.datasetId || "dataset_default",
       templateId,
       kpiCards,
       mainCharts,
-      accentCard,
+      accentCard: accentCard || {
+        title: "Editorial Snapshot",
+        quote: "Visualisasi metrik dan performa terstruktur.",
+        author: "DataLoka Intelligence",
+        role: "Data Engine",
+      },
+      createdAt: dashboard?.createdAt || new Date().toISOString(),
     };
 
     try {
@@ -46,7 +67,7 @@ export const CloudSaveModal: React.FC<CloudSaveModalProps> = ({ isOpen, onClose 
         dashboardState,
         dataset?.name || "Dataset",
         dataset?.rowCount || 0,
-        dataset?.headers.length || 0
+        dataset?.headers?.length || 0
       );
       setSaveSuccess(true);
       setTimeout(() => {
@@ -72,10 +93,10 @@ export const CloudSaveModal: React.FC<CloudSaveModalProps> = ({ isOpen, onClose 
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 text-slate-gray hover:text-ink-black hover:bg-fog-white border border-transparent hover:border-slate-gray/20 transition-all"
+          className="absolute top-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-none bg-mist-gray hover:bg-ink-black text-ink-black hover:text-paper-white border border-slate-gray/30 hover:border-ink-black transition-all cursor-pointer shadow-2xs group"
           aria-label="Tutup dialog"
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4 stroke-[2.5] transition-transform group-hover:scale-110" />
         </button>
 
         {/* Modal Header */}

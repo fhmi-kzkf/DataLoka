@@ -39,6 +39,7 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
       ...theme.grid,
       right: hasSecondary ? 60 : 25,
       left: 60,
+      bottom: chartType === "scatter" ? 45 : 30,
     },
   };
 
@@ -175,14 +176,17 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
     };
   }
 
-  // 2. Vertical Bar & Grouped Bar Chart
+  // 2. Vertical Bar & Grouped Bar Chart (with Dual Y-Axis support if 2 metrics)
   if (chartType === "bar" || chartType === "grouped_bar") {
     const primaryName = humanizeColumnName(yAxisColumns[0]) || "Nilai";
+    const secondaryName = hasSecondary ? humanizeColumnName(yAxisColumns[1]) : "";
+
     const series: EChartsOption["series"] = [
       {
         name: primaryName,
         type: "bar",
         barMaxWidth: 36,
+        yAxisIndex: 0,
         itemStyle: {
           color: theme.colors.siennaBrown,
           borderRadius: [4, 4, 0, 0],
@@ -193,9 +197,10 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
 
     if (hasSecondary) {
       series.push({
-        name: humanizeColumnName(yAxisColumns[1]),
+        name: secondaryName,
         type: "bar",
         barMaxWidth: 36,
+        yAxisIndex: 1, // Right axis
         itemStyle: {
           color: theme.colors.inkBlack,
           borderRadius: [4, 4, 0, 0],
@@ -204,8 +209,59 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
       });
     }
 
+    const yAxisConfig: EChartsOption["yAxis"] = hasSecondary
+      ? [
+          {
+            type: "value",
+            name: primaryName,
+            nameTextStyle: { color: theme.colors.slateGray, fontSize: 11 },
+            axisLine: { show: false },
+            splitLine: theme.splitLine,
+            axisLabel: {
+              ...theme.axisLabel,
+              formatter: (val: number) => {
+                if (val >= 1_000_000) return `Rp ${(val / 1_000_000).toFixed(1)}Jt`;
+                if (val >= 1_000) return `Rp ${(val / 1_000).toFixed(0)}k`;
+                return `Rp ${val}`;
+              },
+            },
+          },
+          {
+            type: "value",
+            name: secondaryName,
+            position: "right",
+            nameTextStyle: { color: theme.colors.slateGray, fontSize: 11 },
+            axisLine: { show: false },
+            splitLine: { show: false },
+            axisLabel: {
+              ...theme.axisLabel,
+              formatter: (val: number) => `${val.toLocaleString("id-ID")}`,
+            },
+          },
+        ]
+      : {
+          type: "value",
+          axisLine: { show: false },
+          splitLine: theme.splitLine,
+          axisLabel: theme.axisLabel,
+        };
+
     return {
       ...baseOption,
+      legend: hasSecondary
+        ? {
+            show: true,
+            top: 0,
+            right: 0,
+            icon: "roundRect",
+            itemWidth: 12,
+            itemHeight: 4,
+            textStyle: {
+              color: theme.colors.slateGray,
+              fontSize: 11,
+            },
+          }
+        : undefined,
       xAxis: {
         type: "category",
         data: categories,
@@ -217,12 +273,7 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
           rotate: categories.some((c) => c.length > 8) ? 30 : 0,
         },
       },
-      yAxis: {
-        type: "value",
-        axisLine: { show: false },
-        splitLine: theme.splitLine,
-        axisLabel: theme.axisLabel,
-      },
+      yAxis: yAxisConfig,
       series,
     };
   }
@@ -332,22 +383,40 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
       tooltip: {
         trigger: "item",
         formatter: (params: unknown) => {
-          const item = params as { value: [number, number] };
+          const item = params as { dataIndex: number; value: [number, number] };
+          const label = data[item?.dataIndex]?.label || `Item ${item?.dataIndex + 1}`;
           const val = item.value;
-          return `${xName}: ${val[0].toLocaleString("id-ID")}<br/>${yName}: ${val[1].toLocaleString("id-ID")}`;
+          return `<strong>${label}</strong><br/>${xName}: ${val[0].toLocaleString("id-ID")}<br/>${yName}: ${val[1].toLocaleString("id-ID")}`;
         },
         ...theme.tooltip,
       },
       xAxis: {
         type: "value",
         name: xName,
+        nameLocation: "middle",
+        nameGap: 25,
+        nameTextStyle: {
+          color: theme.colors.slateGray,
+          fontSize: 11,
+        },
         axisLine: theme.axisLine,
         splitLine: theme.splitLine,
-        axisLabel: theme.axisLabel,
+        axisLabel: {
+          ...theme.axisLabel,
+          formatter: (val: number) => {
+            if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}Jt`;
+            if (val >= 1_000) return `${(val / 1_000).toFixed(0)}k`;
+            return `${val}`;
+          },
+        },
       },
       yAxis: {
         type: "value",
         name: yName,
+        nameTextStyle: {
+          color: theme.colors.slateGray,
+          fontSize: 11,
+        },
         axisLine: { show: false },
         splitLine: theme.splitLine,
         axisLabel: theme.axisLabel,
@@ -356,7 +425,7 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
         {
           name: "Sebaran Data",
           type: "scatter",
-          symbolSize: 10,
+          symbolSize: 12,
           itemStyle: {
             color: theme.colors.siennaBrown,
             borderColor: theme.colors.blushPeach,

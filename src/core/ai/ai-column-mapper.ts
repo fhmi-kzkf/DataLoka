@@ -9,7 +9,31 @@ interface SemanticRule {
 }
 
 const INDONESIAN_SEMANTIC_RULES: SemanticRule[] = [
-  // 1. Time / Date Dimensions
+  // 1. Order / Transaction Identifiers
+  {
+    patterns: [/^id$/i, /id_transaksi/i, /no_pesanan/i, /invoice/i, /nomor_resi/i, /resi/i, /trx_id/i, /kode_pesanan/i],
+    role: "identifier",
+    dataType: "text",
+    standardizedAlias: "id_transaksi",
+    confidence: 0.95,
+  },
+  // 2. Marketplace, Categories & Product Names
+  {
+    patterns: [/kategori/i, /category/i, /produk/i, /nama_barang/i, /item/i, /sku/i, /brand/i, /merek/i, /tipe/i, /channel/i, /platform/i, /status/i, /metode/i],
+    role: "category",
+    dataType: "categorical",
+    standardizedAlias: "dim_kategori",
+    confidence: 0.96,
+  },
+  // 3. Regional / Location Dimensions
+  {
+    patterns: [/wilayah/i, /kota/i, /provinsi/i, /region/i, /lokasi/i, /alamat/i, /area/i, /cabang/i],
+    role: "location",
+    dataType: "categorical",
+    standardizedAlias: "dim_wilayah",
+    confidence: 0.94,
+  },
+  // 4. Time / Date Dimensions
   {
     patterns: [/tanggal/i, /tgl/i, /date/i, /waktu/i, /periode/i, /bulan/i, /tahun/i, /created_at/i, /transaksi_date/i],
     role: "time",
@@ -17,15 +41,15 @@ const INDONESIAN_SEMANTIC_RULES: SemanticRule[] = [
     standardizedAlias: "dim_waktu",
     confidence: 0.95,
   },
-  // 2. Financial Metrics / Revenue / GMV
+  // 5. Financial Metrics / Revenue / GMV
   {
-    patterns: [/total_penjualan/i, /omset/i, /omzet/i, /revenue/i, /pendapatan/i, /harga/i, /subtotal/i, /gmv/i, /grand_total/i, /total_bayar/i],
+    patterns: [/total_penjualan/i, /omset/i, /omzet/i, /revenue/i, /pendapatan/i, /harga/i, /subtotal/i, /gmv/i, /grand_total/i, /total_bayar/i, /nilai/i],
     role: "metric",
     dataType: "currency",
     standardizedAlias: "metrik_omset",
     confidence: 0.96,
   },
-  // 3. Operational Costs / Shipping
+  // 6. Operational Costs / Shipping
   {
     patterns: [/ongkir/i, /ongkos_kirim/i, /shipping/i, /cogs/i, /hpp/i, /biaya/i, /beban/i, /diskon/i, /potongan/i],
     role: "metric",
@@ -33,15 +57,15 @@ const INDONESIAN_SEMANTIC_RULES: SemanticRule[] = [
     standardizedAlias: "metrik_biaya",
     confidence: 0.92,
   },
-  // 4. Volume Metrics / Quantities
+  // 7. Volume Metrics / Quantities
   {
-    patterns: [/jumlah/i, /qty/i, /quantity/i, /pesanan/i, /order_count/i, /volume/i, /stok/i, /terjual/i, /total_unit/i],
+    patterns: [/jumlah/i, /qty/i, /quantity/i, /volume/i, /stok/i, /terjual/i, /total_unit/i, /jumlah_pesanan/i, /total_pesanan/i, /banyak_pesanan/i],
     role: "metric",
     dataType: "numeric",
     standardizedAlias: "metrik_kuantitas",
     confidence: 0.94,
   },
-  // 5. Margin / Rates / Percentages
+  // 8. Margin / Rates / Percentages
   {
     patterns: [/margin/i, /persen/i, /percent/i, /rate/i, /roas/i, /ctr/i, /roi/i, /ratio/i, /rasio/i],
     role: "metric",
@@ -49,38 +73,30 @@ const INDONESIAN_SEMANTIC_RULES: SemanticRule[] = [
     standardizedAlias: "metrik_rasio",
     confidence: 0.9,
   },
-  // 6. Marketplace & Product Categories
-  {
-    patterns: [/kategori/i, /category/i, /produk/i, /nama_barang/i, /item/i, /sku/i, /brand/i, /merek/i, /tipe/i, /channel/i, /platform/i],
-    role: "category",
-    dataType: "categorical",
-    standardizedAlias: "dim_kategori",
-    confidence: 0.93,
-  },
-  // 7. Regional / Location Dimensions
-  {
-    patterns: [/wilayah/i, /kota/i, /provinsi/i, /region/i, /lokasi/i, /alamat/i, /area/i, /cabang/i],
-    role: "location",
-    dataType: "categorical",
-    standardizedAlias: "dim_wilayah",
-    confidence: 0.91,
-  },
-  // 8. Order / Transaction Identifiers
-  {
-    patterns: [/id/i, /no_pesanan/i, /invoice/i, /nomor/i, /resi/i, /kode/i, /trx_id/i],
-    role: "identifier",
-    dataType: "text",
-    standardizedAlias: "id_transaksi",
-    confidence: 0.88,
-  },
 ];
 
 export class AiColumnMapper {
   static classifyColumn(columnName: string, sampleValues: unknown[] = []): AiColumnClassification {
     const cleanName = columnName.trim().toLowerCase();
+    const nonNullValues = sampleValues.filter((v) => v !== null && v !== undefined && v !== "");
+
+    // If we have sample values and they are non-numeric strings (e.g. "Fashion", "Baju", "Selesai"), it cannot be a metric
+    const isExplicitString = nonNullValues.length > 0 && nonNullValues.some((v) => typeof v === "string" && isNaN(Number(v.replace(/[^0-9.-]/g, ""))));
 
     for (const rule of INDONESIAN_SEMANTIC_RULES) {
       if (rule.patterns.some((pattern) => pattern.test(cleanName))) {
+        // If classified as metric but sample values are clearly text, demote to category
+        if (rule.role === "metric" && isExplicitString) {
+          return {
+            columnName,
+            semanticRole: "category",
+            detectedDataType: "categorical",
+            confidence: 0.9,
+            rationale: `Header '${columnName}' berisi sampel teks kategorikal.`,
+            standardizedAlias: `dim_${cleanName.replace(/\W+/g, "_")}`,
+          };
+        }
+
         return {
           columnName,
           semanticRole: rule.role,
@@ -93,9 +109,8 @@ export class AiColumnMapper {
     }
 
     // Heuristic analysis based on sample values
-    const nonNullValues = sampleValues.filter((v) => v !== null && v !== undefined && v !== "");
     if (nonNullValues.length > 0) {
-      const allNumeric = nonNullValues.every((v) => typeof v === "number" || (!isNaN(Number(v)) && String(v).trim() !== ""));
+      const allNumeric = nonNullValues.every((v) => typeof v === "number" || (!isNaN(Number(String(v).replace(/[^0-9.-]/g, ""))) && String(v).trim() !== ""));
       if (allNumeric) {
         return {
           columnName,

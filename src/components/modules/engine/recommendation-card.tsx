@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { ConfidenceIndicator } from "@/components/modules/mapping/confidence-indicator";
 import type { ChartRecommendation, ChartType } from "@/types/chart";
 import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
 
 export interface RecommendationCardProps {
   recommendation: ChartRecommendation;
@@ -128,7 +129,7 @@ export function RecommendationCard({
               className="text-[var(--color-slate-gray)] hover:text-red-600 text-xs p-1"
               title="Hapus chart ini"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>

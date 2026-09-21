@@ -5,6 +5,7 @@ import { useQualityStore } from "@/stores/quality-store";
 import { QualityScoreCard } from "./quality-score-card";
 import { QualityIssueCard } from "./quality-issue-card";
 import { AuditLogPanel } from "./audit-log-panel";
+import { Check } from "lucide-react";
 import type { DatasetSchema } from "@/types/dataset";
 import type { DatasetMapping } from "@/types/mapping";
 
@@ -98,8 +99,8 @@ export function QualityAssistantContainer({
 
         {report.issues.length === 0 && (
           <Card surface="mist" padding="lg" className="text-center py-10">
-            <div className="w-12 h-12 rounded-full bg-[#d1fae5] text-[#065f46] flex items-center justify-center mx-auto mb-3 font-semibold text-lg">
-              ✓
+            <div className="w-12 h-12 rounded-full bg-[#d1fae5] text-[#065f46] flex items-center justify-center mx-auto mb-3">
+              <Check className="w-6 h-6 text-[#065f46]" />
             </div>
             <h3 className="text-[18px] font-medium text-[var(--color-ink-black)] mb-1">
               Data Sempurna & Siap Dibuatkan Chart

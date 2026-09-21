@@ -1,8 +1,11 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { DatasetSchema, ParseProgressEvent, ParseStage } from "@/types/dataset";
 import { parseFile } from "@/core/parser/file-parser";
 import { fetchAndParseGoogleSheet } from "@/core/parser/gsheet-parser";
 import { parseClipboardText } from "@/core/parser/clipboard-parser";
+
+import { sanitizeAndEngineerDataset } from "@/core/quality/data-sanitizer";
 
 export type IngestTab = "upload" | "gsheet" | "clipboard";
 
@@ -25,19 +28,22 @@ export interface DatasetState {
   reset: () => void;
 }
 
-export const useDatasetStore = create<DatasetState>((set, get) => ({
-  dataset: null,
-  rawFile: null,
-  isIngesting: false,
-  progress: 0,
-  progressStage: "completed",
-  progressMessage: "",
-  error: null,
-  activeTab: "upload",
+export const useDatasetStore = create<DatasetState>()(
+  persist(
+    (set, get) => ({
+      dataset: null,
+      rawFile: null,
+      isIngesting: false,
+      progress: 0,
+      progressStage: "completed",
+      progressMessage: "",
+      error: null,
+      activeTab: "upload",
 
-  setDataset: (dataset) => set({ dataset }),
+      setDataset: (dataset) =>
+        set({ dataset: dataset ? sanitizeAndEngineerDataset(dataset) : null }),
 
-  setActiveTab: (activeTab) => set({ activeTab, error: null }),
+      setActiveTab: (activeTab) => set({ activeTab, error: null }),
 
   ingestFile: async (file: File) => {
     set({
@@ -202,4 +208,14 @@ export const useDatasetStore = create<DatasetState>((set, get) => ({
       progressMessage: "",
       error: null,
     }),
-}));
+    }),
+    {
+      name: "dataloka_dataset_storage",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        dataset: state.dataset,
+        activeTab: state.activeTab,
+      }),
+    }
+  )
+);

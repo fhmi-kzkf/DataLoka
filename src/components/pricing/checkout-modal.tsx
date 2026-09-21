@@ -18,6 +18,7 @@ import {
   Download,
   ArrowRight,
   Lock,
+  Tag,
 } from "lucide-react";
 import { PRICING_TIERS, type PlanTierId, type BillingCycle } from "@/types/pricing";
 import { useAuthStore } from "@/stores/auth-store";
@@ -51,6 +52,17 @@ export const CheckoutModal: React.FC = () => {
   const [cardCvv, setCardCvv] = useState<string>("892");
   const [ewalletPhone, setEwalletPhone] = useState<string>("0812-8920-1182");
 
+  // Promo / Discount Code State
+  const [promoCodeInput, setPromoCodeInput] = useState<string>("");
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discountAmount: number;
+    finalPrice: number;
+    message: string;
+  } | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [isValidatingPromo, setIsValidatingPromo] = useState<boolean>(false);
+
   useEffect(() => {
     if (checkoutModalOpen) {
       setActiveTier(selectedUpgradeTier || "pro");
@@ -58,6 +70,9 @@ export const CheckoutModal: React.FC = () => {
       setReceipt(null);
       setIsProcessing(false);
       setTimeLeftSeconds(899);
+      setAppliedPromo(null);
+      setPromoCodeInput("");
+      setPromoError(null);
     }
   }, [checkoutModalOpen, selectedUpgradeTier, selectedBillingCycle]);
 
@@ -77,7 +92,49 @@ export const CheckoutModal: React.FC = () => {
   const annualPricePerMonth = currentTierObj.annualPricePerMonth;
   const rawTotal = activeCycle === "annual" ? annualPricePerMonth * 12 : monthlyPrice;
   const originalAnnualTotal = monthlyPrice * 12;
-  const discountAmount = activeCycle === "annual" ? originalAnnualTotal - rawTotal : 0;
+  const annualDiscountAmount = activeCycle === "annual" ? originalAnnualTotal - rawTotal : 0;
+  const couponDiscountAmount = appliedPromo ? appliedPromo.discountAmount : 0;
+  const finalPayableTotal = Math.max(0, rawTotal - couponDiscountAmount);
+
+  const handleApplyPromo = async () => {
+    if (!promoCodeInput.trim()) return;
+    setIsValidatingPromo(true);
+    setPromoError(null);
+    try {
+      const res = await fetch("/api/admin/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: promoCodeInput,
+          tier: activeTier,
+          billingCycle: activeCycle,
+          originalPrice: rawTotal,
+        }),
+      });
+      const json = await res.json();
+      if (json.success && json.data.valid) {
+        setAppliedPromo({
+          code: promoCodeInput.toUpperCase().trim(),
+          discountAmount: json.data.discountAmount,
+          finalPrice: json.data.finalPrice,
+          message: json.data.message,
+        });
+      } else {
+        setAppliedPromo(null);
+        setPromoError(json.data?.message || json.error?.message || "Kode promo tidak valid");
+      }
+    } catch {
+      setPromoError("Gagal memvalidasi kode promo ke database.");
+    } finally {
+      setIsValidatingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoCodeInput("");
+    setPromoError(null);
+  };
 
   const vaNumber =
     paymentMethod === "va_bca"
@@ -138,10 +195,10 @@ export const CheckoutModal: React.FC = () => {
         <button
           type="button"
           onClick={closeCheckoutModal}
-          className="absolute top-4 right-4 p-1.5 text-slate-gray hover:text-ink-black hover:bg-fog-white border border-transparent hover:border-slate-gray/20 transition-all"
+          className="absolute top-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-none bg-mist-gray hover:bg-ink-black text-ink-black hover:text-paper-white border border-slate-gray/30 hover:border-ink-black transition-all cursor-pointer shadow-2xs group"
           aria-label="Tutup dialog checkout"
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4 stroke-[2.5] transition-transform group-hover:scale-110" />
         </button>
 
         {/* ----------------- STATE 1 & 2: CHECKOUT & PAYMENT SELECTION ----------------- */}
@@ -446,10 +503,20 @@ export const CheckoutModal: React.FC = () => {
                       </span>
                     </div>
 
-                    {discountAmount > 0 && (
+                    {annualDiscountAmount > 0 && (
                       <div className="flex justify-between text-[#059669]">
                         <span>Diskon Tahunan (20%):</span>
-                        <span className="font-mono">-Rp {discountAmount.toLocaleString("id-ID")}</span>
+                        <span className="font-mono">-Rp {annualDiscountAmount.toLocaleString("id-ID")}</span>
+                      </div>
+                    )}
+
+                    {appliedPromo && (
+                      <div className="flex justify-between text-sienna-brown font-semibold bg-sienna-brown/10 p-1.5 border border-sienna-brown/20 text-[12px]">
+                        <span className="flex items-center gap-1">
+                          <Tag className="w-3 h-3" />
+                          <span>Kupon ({appliedPromo.code}):</span>
+                        </span>
+                        <span className="font-mono">-Rp {appliedPromo.discountAmount.toLocaleString("id-ID")}</span>
                       </div>
                     )}
 
@@ -459,12 +526,57 @@ export const CheckoutModal: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Promo Code Input Box */}
+                  <div className="pt-2 border-t border-slate-gray/15 space-y-1.5">
+                    <label className="block text-[11.5px] font-mono text-slate-gray">
+                      Punya Kode Promo / Kupon?
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        placeholder="KODE PROMO"
+                        value={promoCodeInput}
+                        onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                        disabled={Boolean(appliedPromo)}
+                        className="flex-1 px-2.5 py-1.5 text-[12.5px] font-mono uppercase bg-paper-white border border-slate-gray/30 focus:border-ink-black outline-none disabled:bg-fog-white"
+                      />
+                      {appliedPromo ? (
+                        <button
+                          type="button"
+                          onClick={handleRemovePromo}
+                          className="px-2.5 py-1.5 text-[11.5px] font-mono bg-mist-gray hover:bg-red-50 hover:text-red-700 text-slate-gray border border-slate-gray/30 transition cursor-pointer"
+                        >
+                          Hapus
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleApplyPromo}
+                          disabled={isValidatingPromo || !promoCodeInput.trim()}
+                          className="px-3 py-1.5 text-[11.5px] font-mono bg-ink-black hover:bg-slate-gray text-paper-white transition cursor-pointer disabled:opacity-50"
+                        >
+                          {isValidatingPromo ? "..." : "Pakai"}
+                        </button>
+                      )}
+                    </div>
+                    {promoError && (
+                      <p className="text-[11px] font-mono text-red-600 leading-tight">
+                        {promoError}
+                      </p>
+                    )}
+                    {appliedPromo && (
+                      <p className="text-[11px] font-mono text-[#059669] leading-tight">
+                        {appliedPromo.message}
+                      </p>
+                    )}
+                  </div>
+
                   <div className="pt-3 border-t border-slate-gray/20">
                     <span className="text-[11px] font-mono uppercase text-slate-gray block">
                       Total Pembayaran:
                     </span>
                     <p className="font-signifier text-[26px] font-normal text-sienna-brown tracking-tight leading-tight mt-0.5">
-                      Rp {rawTotal.toLocaleString("id-ID")}
+                      Rp {finalPayableTotal.toLocaleString("id-ID")}
                     </p>
                   </div>
 

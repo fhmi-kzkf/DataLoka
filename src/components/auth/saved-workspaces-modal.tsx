@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 
 export const SavedWorkspacesModal: React.FC = () => {
   const { user, savedWorkspacesModalOpen, setSavedWorkspacesModalOpen } = useAuthStore();
-  const { setDashboardTitle, setDashboardSubtitle, setActiveTemplate, setKpiCards, setMainCharts } = useDashboardStore();
   const router = useRouter();
 
   const [dashboards, setDashboards] = useState<SavedCloudDashboard[]>([]);
@@ -33,11 +32,23 @@ export const SavedWorkspacesModal: React.FC = () => {
   if (!savedWorkspacesModalOpen) return null;
 
   const handleOpenDashboard = (item: SavedCloudDashboard) => {
-    setDashboardTitle(item.title);
-    setDashboardSubtitle(item.subtitle);
-    setActiveTemplate(item.templateId);
-    setKpiCards(item.dashboardState.kpiCards || []);
-    setMainCharts(item.dashboardState.mainCharts || []);
+    const state = item.dashboardState;
+    useDashboardStore.setState({
+      dashboard: {
+        id: item.id,
+        title: item.title,
+        subtitle: item.subtitle,
+        datasetId: state?.datasetId || "dataset_cloud",
+        templateId: item.templateId,
+        kpiCards: state?.kpiCards || [],
+        mainCharts: state?.mainCharts || [],
+        accentCard: state?.accentCard,
+        createdAt: item.updatedAt,
+      },
+      activeTemplateId: item.templateId,
+      globalCategoryFilter: null,
+      searchFilter: "",
+    });
     setSavedWorkspacesModalOpen(false);
     router.push("/dashboard");
   };
@@ -64,10 +75,10 @@ export const SavedWorkspacesModal: React.FC = () => {
         <button
           type="button"
           onClick={() => setSavedWorkspacesModalOpen(false)}
-          className="absolute top-4 right-4 p-1.5 text-slate-gray hover:text-ink-black hover:bg-fog-white border border-transparent hover:border-slate-gray/20 transition-all"
+          className="absolute top-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-none bg-mist-gray hover:bg-ink-black text-ink-black hover:text-paper-white border border-slate-gray/30 hover:border-ink-black transition-all cursor-pointer shadow-2xs group"
           aria-label="Tutup dialog"
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4 stroke-[2.5] transition-transform group-hover:scale-110" />
         </button>
 
         {/* Modal Header */}
