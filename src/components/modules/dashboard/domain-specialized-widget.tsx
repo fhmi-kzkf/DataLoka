@@ -175,38 +175,38 @@ export const DomainSpecializedWidget: React.FC<DomainSpecializedWidgetProps> = (
       const gmvDiff = projectedGmv - baseGmv;
 
       return (
-        <div className="bg-paper-white border-2 border-[#9e472a]/40 p-5 sm:p-6 rounded-none shadow-subtle space-y-5 text-left transition-all">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#9e472a]/20 pb-4">
+        <div className="bg-paper-white border-2 border-[#9e472a]/40 p-3.5 sm:p-6 rounded-none shadow-subtle space-y-3.5 sm:space-y-5 text-left transition-all">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[#9e472a]/20 pb-3 sm:pb-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 bg-[#9e472a] rounded-none inline-block" />
-                <h3 className="font-signifier text-[19px] text-ink-black font-semibold tracking-tight">
+                <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#9e472a] rounded-none inline-block shrink-0" />
+                <h3 className="font-signifier text-[17px] sm:text-[19px] text-ink-black font-semibold tracking-tight">
                   Kanal Marketplace &amp; Simulasi Lift Nilai Keranjang (AOV)
                 </h3>
               </div>
-              <p className="text-[12.5px] text-slate-gray">
+              <p className="text-[12px] sm:text-[12.5px] text-slate-gray">
                 Pantau pangsa GMV multi-channel dan proyeksikan pertumbuhan omset dari optimasi cross-selling.
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[11.5px] font-mono bg-[#9e472a]/10 text-[#9e472a] px-3 py-1 border border-[#9e472a]/25 font-semibold tracking-wide">
+              <span className="text-[10.5px] sm:text-[11.5px] font-mono bg-[#9e472a]/10 text-[#9e472a] px-2.5 py-0.5 sm:px-3 sm:py-1 border border-[#9e472a]/25 font-semibold tracking-wide">
                 {channels.length} KANAL AKTIF SYNC
               </span>
             </div>
           </div>
 
-          {/* Dynamic Channel Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Dynamic Channel Grid (2-cols on mobile for compact layout) */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
             {channels.map((item) => (
-              <div key={item.channel} className="bg-fog-white border border-slate-gray/20 p-3.5 space-y-2 relative group hover:border-[#9e472a]/60 transition-colors">
-                <div className="flex justify-between items-center text-[11px] font-mono text-slate-gray">
+              <div key={item.channel} className="bg-fog-white border border-slate-gray/20 p-2.5 sm:p-3.5 space-y-1.5 sm:space-y-2 relative group hover:border-[#9e472a]/60 transition-colors">
+                <div className="flex justify-between items-center text-[10.5px] sm:text-[11px] font-mono text-slate-gray">
                   <span className="font-medium truncate text-ink-black" title={item.channel}>{item.channel}</span>
-                  <span className="text-[#9e472a] font-bold">{item.share}</span>
+                  <span className="text-[#9e472a] font-bold shrink-0 ml-1">{item.share}</span>
                 </div>
-                <div className="text-[17px] font-mono font-semibold text-ink-black">{item.gmv}</div>
-                <div className="flex justify-between items-center text-[11px] text-slate-gray pt-1.5 border-t border-slate-gray/15">
-                  <span>{item.orders}</span>
-                  <span className="text-[10px] bg-paper-white px-2 py-0.5 border border-slate-gray/20 font-mono text-ink-black font-medium truncate max-w-[110px]">
+                <div className="text-[15px] sm:text-[17px] font-mono font-semibold text-ink-black">{item.gmv}</div>
+                <div className="flex justify-between items-center text-[10px] sm:text-[11px] text-slate-gray pt-1 sm:pt-1.5 border-t border-slate-gray/15">
+                  <span className="truncate">{item.orders}</span>
+                  <span className="text-[9.5px] sm:text-[10px] bg-paper-white px-1.5 py-0.5 border border-slate-gray/20 font-mono text-ink-black font-medium truncate max-w-[90px] sm:max-w-[110px]">
                     {item.badge}
                   </span>
                 </div>
@@ -215,22 +215,22 @@ export const DomainSpecializedWidget: React.FC<DomainSpecializedWidgetProps> = (
           </div>
 
           {/* Interactive AOV / GMV Uplift Simulator */}
-          <div className="bg-[#9e472a]/5 border border-[#9e472a]/25 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-[#9e472a]/5 border border-[#9e472a]/25 p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
             <div className="space-y-1">
-              <span className="text-[11px] font-mono text-[#9e472a] font-bold uppercase tracking-wider">
+              <span className="text-[10.5px] sm:text-[11px] font-mono text-[#9e472a] font-bold uppercase tracking-wider">
                 Simulasi Kenaikan Nilai Keranjang (AOV Uplift)
               </span>
-              <p className="text-[13px] text-ink-black">
+              <p className="text-[12px] sm:text-[13px] text-ink-black">
                 Dampak kenaikan keranjang terhadap total omset riil ({formatCurrencyIDR(baseGmv)}):
               </p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               {[5, 10, 15, 25].map((pct) => (
                 <button
                   key={pct}
                   type="button"
                   onClick={() => setEcomUplift(pct)}
-                  className={`px-3 py-1.5 text-[12px] font-mono border transition-all cursor-pointer ${
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-[12px] font-mono border transition-all cursor-pointer ${
                     ecomUplift === pct
                       ? "bg-[#9e472a] text-paper-white border-[#9e472a] font-semibold"
                       : "bg-paper-white text-ink-black border-slate-gray/25 hover:bg-mist-gray"
@@ -240,12 +240,12 @@ export const DomainSpecializedWidget: React.FC<DomainSpecializedWidgetProps> = (
                 </button>
               ))}
             </div>
-            <div className="text-right font-mono shrink-0">
-              <span className="text-[11px] text-slate-gray block">Proyeksi Omset Baru:</span>
-              <span className="text-[16px] font-bold text-[#9e472a]">
+            <div className="text-left sm:text-right font-mono shrink-0">
+              <span className="text-[10.5px] sm:text-[11px] text-slate-gray block">Proyeksi Omset Baru:</span>
+              <span className="text-[15px] sm:text-[16px] font-bold text-[#9e472a]">
                 {formatCurrencyIDR(projectedGmv)}
               </span>
-              <span className="text-[11px] text-[#059669] font-medium ml-1.5">
+              <span className="text-[10.5px] sm:text-[11px] text-[#059669] font-medium ml-1.5">
                 (+{formatCurrencyIDR(gmvDiff)})
               </span>
             </div>

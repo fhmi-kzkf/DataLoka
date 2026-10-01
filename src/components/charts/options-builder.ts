@@ -37,9 +37,11 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
     },
     grid: {
       ...theme.grid,
-      right: hasSecondary ? 60 : 25,
-      left: 60,
-      bottom: chartType === "scatter" ? 45 : 30,
+      top: hasSecondary ? 38 : 28,
+      right: hasSecondary ? 10 : 10,
+      left: 10,
+      bottom: chartType === "scatter" ? 45 : 20,
+      containLabel: true,
     },
   };
 
@@ -54,14 +56,14 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
         name: primaryName,
         type: "line",
         smooth: true,
-        showSymbol: data.length < 20,
-        symbolSize: 6,
+        showSymbol: data.length <= 15,
+        symbolSize: 5,
         yAxisIndex: 0,
         itemStyle: {
           color: theme.colors.siennaBrown,
         },
         lineStyle: {
-          width: 2.5,
+          width: 2.2,
           color: theme.colors.siennaBrown,
         },
         areaStyle: isArea
@@ -88,16 +90,16 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
         name: secondaryName,
         type: "line",
         smooth: true,
-        showSymbol: data.length < 20,
-        symbolSize: 6,
+        showSymbol: data.length <= 15,
+        symbolSize: 5,
         yAxisIndex: 1, // Dual Y-Axis (Right Sumbu)
         itemStyle: {
           color: theme.colors.inkBlack,
         },
         lineStyle: {
-          width: 2,
+          width: 1.8,
           color: theme.colors.inkBlack,
-          type: "dashed",
+          type: data.length > 25 ? "solid" : "dashed",
         },
         data: secondaryValues,
       });
@@ -111,12 +113,14 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
             name: primaryName,
             nameTextStyle: {
               color: theme.colors.slateGray,
-              fontSize: 11,
+              fontSize: 10.5,
+              align: "left",
             },
             axisLine: { show: false },
             splitLine: theme.splitLine,
             axisLabel: {
               ...theme.axisLabel,
+              fontSize: 10,
               formatter: (val: number) => {
                 if (val >= 1_000_000) return `Rp ${(val / 1_000_000).toFixed(1)}Jt`;
                 if (val >= 1_000) return `Rp ${(val / 1_000).toFixed(0)}k`;
@@ -131,12 +135,14 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
             position: "right",
             nameTextStyle: {
               color: theme.colors.slateGray,
-              fontSize: 11,
+              fontSize: 10.5,
+              align: "right",
             },
             axisLine: { show: false },
             splitLine: { show: false },
             axisLabel: {
               ...theme.axisLabel,
+              fontSize: 10,
               formatter: (val: number) => `${val.toLocaleString("id-ID")}`,
             },
           },
@@ -154,13 +160,13 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
         ? {
             show: true,
             top: 0,
-            right: 0,
+            left: "center",
             icon: "roundRect",
             itemWidth: 12,
             itemHeight: 4,
             textStyle: {
               color: theme.colors.slateGray,
-              fontSize: 11,
+              fontSize: 10.5,
             },
           }
         : undefined,
@@ -169,7 +175,12 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
         data: categories,
         axisLine: theme.axisLine,
         axisTick: { show: false },
-        axisLabel: theme.axisLabel,
+        axisLabel: {
+          ...theme.axisLabel,
+          interval: data.length > 12 ? "auto" : 0,
+          hideOverlap: true,
+          fontSize: 10,
+        },
       },
       yAxis: yAxisConfig,
       series,
@@ -252,13 +263,13 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
         ? {
             show: true,
             top: 0,
-            right: 0,
+            left: "center",
             icon: "roundRect",
             itemWidth: 12,
             itemHeight: 4,
             textStyle: {
               color: theme.colors.slateGray,
-              fontSize: 11,
+              fontSize: 10.5,
             },
           }
         : undefined,
@@ -269,8 +280,10 @@ export function buildEChartsOption(recommendation: ChartRecommendation): ECharts
         axisTick: { show: false },
         axisLabel: {
           ...theme.axisLabel,
-          interval: 0,
+          interval: categories.length > 10 ? "auto" : 0,
           rotate: categories.some((c) => c.length > 8) ? 30 : 0,
+          hideOverlap: true,
+          fontSize: 10,
         },
       },
       yAxis: yAxisConfig,

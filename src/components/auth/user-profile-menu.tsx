@@ -65,7 +65,7 @@ export const UserProfileMenu: React.FC = () => {
         className="flex items-center gap-2 p-1 pl-2 border border-slate-gray/25 hover:border-slate-gray/40 bg-paper-white shadow-2xs transition-all text-left"
         aria-expanded={dropdownOpen}
       >
-        <div className="flex flex-col items-start leading-none pr-1">
+        <div className="hidden sm:flex flex-col items-start leading-none pr-1">
           <span className="text-[12px] font-medium text-ink-black truncate max-w-[110px]">
             {user.displayName || user.email?.split("@")[0]}
           </span>
@@ -74,10 +74,10 @@ export const UserProfileMenu: React.FC = () => {
           </span>
         </div>
 
-        <div className="w-7 h-7 bg-ink-black text-paper-white font-mono text-[11px] font-semibold flex items-center justify-center">
+        <div className="w-7 h-7 bg-ink-black text-paper-white font-mono text-[11px] font-semibold flex items-center justify-center shrink-0">
           {initials}
         </div>
-        <ChevronDown className="w-3 h-3 text-slate-gray" />
+        <ChevronDown className="w-3 h-3 text-slate-gray shrink-0" />
       </button>
 
       {/* Dropdown Menu */}

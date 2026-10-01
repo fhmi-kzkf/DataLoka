@@ -333,7 +333,7 @@ export const DashboardComposer: React.FC<DashboardComposerProps> = ({
   const rawHeaders = dataset?.headers || (dataset?.rows && dataset.rows[0] ? Object.keys(dataset.rows[0]) : []);
 
   return (
-    <div className="w-full space-y-8 animate-fadeIn text-left">
+    <div className="w-full space-y-4 sm:space-y-8 animate-fadeIn text-left">
       {/* 1. Dashboard Header */}
       <DashboardHeader
         title={dashboard.title}
@@ -386,25 +386,25 @@ export const DashboardComposer: React.FC<DashboardComposerProps> = ({
 
       {/* 4. KPI Cards Row (Total Penjualan, Jumlah Pesanan, AOV Aktual) */}
       {computedKpis.length > 0 && (
-        <section aria-label="Key Performance Indicators" className="space-y-3">
+        <section aria-label="Key Performance Indicators" className="space-y-2 sm:space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span
-                className="w-2.5 h-2.5 rounded-none inline-block"
+                className="w-2.5 h-2.5 rounded-none inline-block shrink-0"
                 style={{ backgroundColor: templateDef.accentColor || "#9e472a" }}
               />
-              <h2 className="text-[13px] font-mono font-bold text-slate-gray uppercase tracking-wider">
+              <h2 className="text-[12px] sm:text-[13px] font-mono font-bold text-slate-gray uppercase tracking-wider">
                 {templateDef.specializedMetricsHeader || "Metrik Kunci Utama"}
               </h2>
             </div>
             {isEditingLayout && (
-              <span className="text-[12px] text-slate-gray italic font-mono">
+              <span className="text-[11px] sm:text-[12px] text-slate-gray italic font-mono">
                 Gunakan panah untuk mengubah posisi KPI
               </span>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
             {computedKpis.map((kpi, idx) => {
               const metric = kpi.kpiMetric;
               return (

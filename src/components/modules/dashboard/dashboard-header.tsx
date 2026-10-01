@@ -66,7 +66,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         </p>
       </div>
 
-      <div className="no-print flex flex-wrap items-center gap-2.5 pt-1 md:pt-0 shrink-0">
+      <div className="no-print flex flex-wrap items-center gap-2 sm:gap-2.5 pt-1 md:pt-0">
         <button
           type="button"
           onClick={openCommandBar}

@@ -71,23 +71,23 @@ export default function HomePage() {
       <section className="max-w-[1240px] mx-auto px-6 lg:px-8 pt-10 sm:pt-16 pb-16 sm:pb-24">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
           {/* Left Column: Narrative */}
-          <div className="lg:col-span-5 text-left space-y-6">
-            <Tag label="Platform Analitik Generasi Baru" />
+          <div className="lg:col-span-5 text-center lg:text-left space-y-6 flex flex-col items-center lg:items-start">
+            <Tag label="Platform Analitik Generasi Baru" className="mx-auto lg:mx-0" />
 
-            <h1 className="font-signifier text-[36px] sm:text-[48px] lg:text-[54px] leading-[1.08] tracking-[-1.5px] font-normal text-ink-black">
+            <h1 className="font-signifier text-[34px] sm:text-[48px] lg:text-[54px] leading-[1.08] tracking-[-1.5px] font-normal text-ink-black text-center lg:text-left">
               Ubah spreadsheet bisnis menjadi visual yang <span className="italic font-normal">bercerita</span>.
             </h1>
 
-            <p className="text-[15.5px] sm:text-[17px] text-slate-gray leading-relaxed max-w-lg">
+            <p className="text-[15.5px] sm:text-[17px] text-slate-gray leading-relaxed max-w-lg text-center lg:text-left mx-auto lg:mx-0">
               Unggah Excel, CSV, atau Google Sheets. Dapatkan dasbor analitik lengkap dalam hitungan detik.
             </p>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-3 pt-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3 pt-1 w-full sm:w-auto max-w-xs sm:max-w-none mx-auto lg:mx-0">
               <Button
                 variant="filled"
                 size="lg"
-                className="text-[14.5px] px-6 py-3 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                className="text-[14.5px] px-6 py-3 hover:shadow-md hover:-translate-y-0.5 transition-all w-full sm:w-auto text-center justify-center"
                 onClick={() => handleScrollTo("ingest")}
               >
                 Coba Sekarang &mdash; Gratis
@@ -95,7 +95,7 @@ export default function HomePage() {
               <Button
                 variant="ghost"
                 size="lg"
-                className="text-[14.5px] px-5 py-3 hover:-translate-y-0.5 transition-all"
+                className="text-[14.5px] px-5 py-3 hover:-translate-y-0.5 transition-all w-full sm:w-auto text-center justify-center"
                 onClick={() => handleScrollTo("demo")}
               >
                 Lihat Contoh Demo
@@ -103,7 +103,7 @@ export default function HomePage() {
             </div>
 
             {/* Micro value badges */}
-            <div className="pt-4 border-t border-slate-gray/15 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] font-mono text-slate-gray">
+            <div className="pt-4 border-t border-slate-gray/15 flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-1.5 text-[12px] font-mono text-slate-gray w-full">
               <span>&bull; 100% Client-Side</span>
               <span>&bull; Zero-Cloud Privacy</span>
               <span>&bull; Tanpa Registrasi</span>

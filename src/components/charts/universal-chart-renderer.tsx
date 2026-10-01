@@ -70,34 +70,34 @@ export function UniversalChartRenderer({
   return (
     <Card
       surface="elevated"
-      padding="lg"
+      padding="none"
       className={cn(
-        "border border-slate-gray/20 rounded-none bg-paper-white shadow-xs flex flex-col justify-between transition-all",
+        "p-3.5 sm:p-6 border border-slate-gray/20 rounded-none bg-paper-white shadow-xs flex flex-col justify-between transition-all",
         isFullscreen && "fixed inset-4 z-50 shadow-2xl bg-paper-white",
         className
       )}
     >
       {/* Chart Card Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-gray/15">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 sm:pb-3 border-b border-slate-gray/15">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 text-[11px] font-mono uppercase bg-[var(--color-mist-gray)] rounded-none border border-slate-gray/15 text-[var(--color-ink-black)]">
+            <span className="px-2 py-0.5 text-[10.5px] sm:text-[11px] font-mono uppercase bg-[var(--color-mist-gray)] rounded-none border border-slate-gray/15 text-[var(--color-ink-black)]">
               {typeLabels[chartType] || chartType}
             </span>
             <ConfidenceIndicator score={confidenceScore} />
-            <span className="text-[10.5px] font-mono text-slate-gray/70 hidden md:inline ml-1">
+            <span className="text-[10px] sm:text-[10.5px] font-mono text-slate-gray/70 hidden md:inline ml-1">
               &bull; Klik elemen untuk filter
             </span>
           </div>
-          <h3 className="text-[18px] font-medium text-[var(--color-ink-black)] tracking-tight">
+          <h3 className="text-[16px] sm:text-[18px] font-medium text-[var(--color-ink-black)] tracking-tight">
             {title}
           </h3>
-          <p className="text-[13px] text-[var(--color-slate-gray)]">{subtitle}</p>
+          <p className="text-[12px] sm:text-[13px] text-[var(--color-slate-gray)]">{subtitle}</p>
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={handleExportPNG} title="Unduh PNG" className="rounded-none text-[12px] px-2.5 py-1">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Button variant="ghost" size="sm" onClick={handleExportPNG} title="Unduh PNG" className="rounded-none text-[11px] sm:text-[12px] px-2 sm:px-2.5 py-1">
             PNG
           </Button>
           <Button
@@ -105,7 +105,7 @@ export function UniversalChartRenderer({
             size="sm"
             onClick={() => setIsFullscreen(!isFullscreen)}
             title="Perbesar Tampilan"
-            className="rounded-none text-[12px] px-2.5 py-1"
+            className="rounded-none text-[11px] sm:text-[12px] px-2 sm:px-2.5 py-1"
           >
             {isFullscreen ? "Kecilkan" : "Layar Penuh"}
           </Button>

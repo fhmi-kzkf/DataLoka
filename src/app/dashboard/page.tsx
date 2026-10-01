@@ -118,24 +118,33 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-paper-white)] text-ink-black antialiased">
+    <div className="min-h-screen bg-[var(--color-paper-white)] text-ink-black antialiased overflow-x-hidden">
       {/* Top Header Nav */}
-      <header className="no-print w-full bg-[var(--color-paper-white)] border-b border-slate-gray/15 py-5 sm:py-6">
-        <div className="max-w-[1360px] mx-auto px-6 sm:px-10 lg:px-14 flex items-center justify-between">
-          <div className="flex items-center gap-3.5 shrink-0">
-            <Link href="/" className="font-signifier text-[22px] sm:text-[26px] tracking-tight text-ink-black hover:opacity-80">
+      <header className="no-print w-full bg-[var(--color-paper-white)] border-b border-slate-gray/15 py-3.5 sm:py-5">
+        <div className="max-w-[1360px] mx-auto px-4 sm:px-10 lg:px-14 flex items-center justify-between gap-2">
+          {/* Brand & Workspace Indicator */}
+          <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
+            <Link href="/" className="font-signifier text-[20px] sm:text-[26px] tracking-tight text-ink-black hover:opacity-80">
               DataLoka
             </Link>
-            <span className="text-[14px] text-slate-gray/60">/</span>
-            <span className="text-[12px] sm:text-[13px] font-mono text-slate-gray uppercase tracking-widest bg-mist-gray px-2 py-0.5 border border-slate-gray/15">
+            <span className="text-[13px] text-slate-gray/60">/</span>
+            <span className="text-[11px] sm:text-[13px] font-mono text-slate-gray uppercase tracking-wider bg-mist-gray px-1.5 sm:px-2 py-0.5 border border-slate-gray/15">
               Workspace
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Action Buttons on Right (Responsive & Simplified on Mobile) */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <Link href="/">
-              <Button variant="ghost" size="sm" className="text-[12.5px] sm:text-[13px] px-3.5 py-1.5 rounded-none">
-                &larr; Beranda
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[12px] sm:text-[13px] px-2.5 sm:px-3.5 py-1.5 rounded-none"
+                aria-label="Kembali ke Beranda"
+                title="Kembali ke Beranda"
+              >
+                <span className="hidden sm:inline">&larr; Beranda</span>
+                <span className="sm:hidden font-mono">&larr; Home</span>
               </Button>
             </Link>
 
@@ -143,13 +152,16 @@ export default function DashboardPage() {
               variant="filled"
               size="sm"
               onClick={() => setUploadModalOpen(true)}
-              className="text-[12.5px] sm:text-[13px] px-4 py-1.5 rounded-none shadow-xs gap-1.5 bg-sienna-brown hover:bg-sienna-brown/90 text-paper-white"
+              className="text-[12px] sm:text-[13px] px-2.5 sm:px-4 py-1.5 rounded-none shadow-xs gap-1.5 bg-sienna-brown hover:bg-sienna-brown/90 text-paper-white"
+              aria-label="Unggah Spreadsheet Baru"
+              title="Unggah Spreadsheet Baru"
             >
-              <UploadCloud className="w-3.5 h-3.5" />
-              <span>Unggah Spreadsheet</span>
+              <UploadCloud className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden md:inline">Unggah Spreadsheet</span>
+              <span className="hidden sm:inline md:hidden">Unggah</span>
             </Button>
 
-            <div className="pl-1 border-l border-slate-gray/20">
+            <div className="pl-1 sm:pl-2 border-l border-slate-gray/20">
               <UserProfileMenu />
             </div>
           </div>
@@ -157,7 +169,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Workspace Area: Direct Dashboard View */}
-      <main className="max-w-[1360px] mx-auto px-6 sm:px-10 lg:px-14 py-8 sm:py-12">
+      <main className="max-w-[1360px] mx-auto px-4 sm:px-10 lg:px-14 py-6 sm:py-12 w-full min-w-0">
         <DashboardComposer
           rowCount={dataset?.rowCount}
           onExport={openExportModal}
@@ -172,11 +184,23 @@ export default function DashboardPage() {
       />
 
       {/* Floating Quick Launcher: Tanya Data AI */}
-      <aside aria-label="Akses Cepat Asisten AI" className="fixed bottom-6 right-6 z-40 no-print animate-fadeIn">
+      <aside aria-label="Akses Cepat Asisten AI" className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 no-print animate-fadeIn">
+        {/* Mobile: Compact 44px circular FAB */}
         <button
           type="button"
           onClick={openCommandBar}
-          className="flex items-center gap-2.5 px-4 py-2.5 bg-ink-black hover:bg-sienna-brown text-paper-white shadow-2xl border border-slate-gray/30 transition-all duration-200 cursor-pointer group"
+          className="sm:hidden flex items-center justify-center w-11 h-11 bg-ink-black hover:bg-sienna-brown text-paper-white shadow-2xl border border-slate-gray/30 transition-all duration-200 cursor-pointer rounded-full"
+          title="Buka Tanya Data AI Assistant (⌘K)"
+          aria-label="Buka Tanya Data AI Assistant"
+        >
+          <Sparkles className="w-5 h-5 text-sienna-brown" />
+        </button>
+
+        {/* Desktop: Full descriptive pill */}
+        <button
+          type="button"
+          onClick={openCommandBar}
+          className="hidden sm:flex items-center gap-2.5 px-4 py-2.5 bg-ink-black hover:bg-sienna-brown text-paper-white shadow-2xl border border-slate-gray/30 transition-all duration-200 cursor-pointer group"
           title="Buka Tanya Data AI Assistant (⌘K)"
         >
           <Sparkles className="w-4 h-4 text-sienna-brown group-hover:text-paper-white transition-colors" />

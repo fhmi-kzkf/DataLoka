@@ -40,7 +40,7 @@ export function StatCard({
     <Card
       surface="elevated"
       padding="none"
-      className={cn("p-5 flex flex-col justify-between w-full min-w-0 min-h-[125px] rounded-none border border-slate-gray/20 bg-paper-white shadow-xs hover:border-slate-gray/40 transition-colors relative overflow-hidden", className)}
+      className={cn("p-3.5 sm:p-5 flex flex-col justify-between w-full min-w-0 min-h-[105px] sm:min-h-[125px] rounded-none border border-slate-gray/20 bg-paper-white shadow-xs hover:border-slate-gray/40 transition-colors relative overflow-hidden", className)}
     >
       {accentColor && (
         <div
@@ -48,15 +48,15 @@ export function StatCard({
           style={{ backgroundColor: accentColor }}
         />
       )}
-      <div className="space-y-2">
+      <div className="space-y-1.5 sm:space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[12.5px] font-mono text-[var(--color-slate-gray)] uppercase tracking-wider truncate">
+          <p className="text-[11.5px] sm:text-[12.5px] font-mono text-[var(--color-slate-gray)] uppercase tracking-wider truncate">
             {label}
           </p>
           {delta && (
             <span
               className={cn(
-                "text-[11.5px] font-mono inline-flex items-center gap-0.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 rounded-none border",
+                "text-[10.5px] sm:text-[11.5px] font-mono inline-flex items-center gap-0.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 rounded-none border",
                 delta.isPositive
                   ? "text-[#059669] bg-[#ecfdf5] border-[#a7f3d0]"
                   : "text-[var(--color-slate-gray)] bg-mist-gray border-slate-gray/20"
@@ -66,17 +66,17 @@ export function StatCard({
             </span>
           )}
         </div>
-        <p className="text-[22px] sm:text-[24px] font-mono font-medium text-[var(--color-ink-black)] tracking-tight leading-tight truncate">
+        <p className="text-[19px] sm:text-[24px] font-mono font-medium text-[var(--color-ink-black)] tracking-tight leading-tight truncate">
           {value}
         </p>
       </div>
 
-      <div className="w-full h-7 mt-3 pt-1 border-t border-slate-gray/10">
+      <div className="w-full h-5 sm:h-7 mt-2 sm:mt-3 pt-1 border-t border-slate-gray/10">
         <svg className="w-full h-full overflow-visible" viewBox="0 0 100 28" preserveAspectRatio="none">
           <polyline
             fill="none"
             stroke={strokeColor}
-            strokeWidth="2"
+            strokeWidth="1.5"
             strokeLinecap="square"
             strokeLinejoin="miter"
             points={points}

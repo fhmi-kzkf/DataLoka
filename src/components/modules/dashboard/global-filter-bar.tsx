@@ -50,12 +50,12 @@ export const GlobalFilterBar: React.FC<GlobalFilterBarProps> = ({
   };
 
   return (
-    <div className="w-full bg-paper-white border border-slate-gray/20 rounded-none p-4 shadow-xs space-y-3.5 text-left">
+    <div className="w-full bg-paper-white border border-slate-gray/20 rounded-none p-3 sm:p-4 shadow-xs space-y-2.5 sm:space-y-3.5 text-left">
       {/* Top Row: Category Filter and Search */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
-        {/* Category Pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <div className="flex items-center gap-1 text-[11.5px] font-mono text-slate-gray pr-1.5 shrink-0">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3.5">
+        {/* Category Pills (Horizontal scrolling on mobile) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+          <div className="flex items-center gap-1 text-[11px] sm:text-[11.5px] font-mono text-slate-gray pr-1 shrink-0">
             <Filter className="w-3.5 h-3.5 text-sienna-brown" />
             <span>KATEGORI:</span>
           </div>
@@ -63,7 +63,7 @@ export const GlobalFilterBar: React.FC<GlobalFilterBarProps> = ({
           <button
             type="button"
             onClick={() => onSelectCategory(null)}
-            className={`px-2.5 py-1 rounded-none text-[12px] font-medium border transition cursor-pointer ${
+            className={`px-2.5 py-1 rounded-none text-[11.5px] sm:text-[12px] font-medium border transition cursor-pointer shrink-0 whitespace-nowrap ${
               selectedCategory === null
                 ? "bg-ink-black text-paper-white border-ink-black font-semibold"
                 : "bg-mist-gray text-ink-black border-slate-gray/20 hover:bg-slate-gray/20"
@@ -80,7 +80,7 @@ export const GlobalFilterBar: React.FC<GlobalFilterBarProps> = ({
                 key={cat}
                 type="button"
                 onClick={() => onSelectCategory(isSelected ? null : cat)}
-                className={`px-2.5 py-1 rounded-none text-[12px] font-medium border transition cursor-pointer ${
+                className={`px-2.5 py-1 rounded-none text-[11.5px] sm:text-[12px] font-medium border transition cursor-pointer shrink-0 whitespace-nowrap ${
                   isSelected
                     ? "bg-sienna-brown text-paper-white border-sienna-brown font-semibold shadow-xs"
                     : "bg-mist-gray text-ink-black border-slate-gray/20 hover:bg-slate-gray/20"
@@ -101,7 +101,7 @@ export const GlobalFilterBar: React.FC<GlobalFilterBarProps> = ({
               placeholder="Cari label / data..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full bg-mist-gray border border-slate-gray/20 rounded-none pl-8 pr-3 py-1.5 text-[12.5px] text-ink-black placeholder:text-smoke-gray focus:outline-none focus:border-ink-black transition"
+              className="w-full bg-mist-gray border border-slate-gray/20 rounded-none pl-8 pr-3 py-1.5 text-[12px] sm:text-[12.5px] text-ink-black placeholder:text-smoke-gray focus:outline-none focus:border-ink-black transition"
             />
           </div>
 
@@ -109,7 +109,7 @@ export const GlobalFilterBar: React.FC<GlobalFilterBarProps> = ({
             <button
               type="button"
               onClick={onResetFilters}
-              className="text-[11.5px] font-mono text-sienna-brown hover:underline font-semibold px-2 py-1 cursor-pointer shrink-0"
+              className="text-[11px] sm:text-[11.5px] font-mono text-sienna-brown hover:underline font-semibold px-2 py-1 cursor-pointer shrink-0"
             >
               Reset
             </button>
@@ -118,9 +118,10 @@ export const GlobalFilterBar: React.FC<GlobalFilterBarProps> = ({
       </div>
 
       {/* Bottom Row: Date Range Filter Presets & Custom Picker */}
-      <div className="pt-3 border-t border-slate-gray/15 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <div className="flex items-center gap-1 text-[11.5px] font-mono text-slate-gray pr-1.5 shrink-0">
+      <div className="pt-2 sm:pt-3 border-t border-slate-gray/15 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
+        {/* Date Range Presets (Horizontal scrolling on mobile) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+          <div className="flex items-center gap-1 text-[11px] sm:text-[11.5px] font-mono text-slate-gray pr-1 shrink-0">
             <Calendar className="w-3.5 h-3.5 text-sienna-brown" />
             <span>RENTANG WAKTU:</span>
           </div>
@@ -146,7 +147,7 @@ export const GlobalFilterBar: React.FC<GlobalFilterBarProps> = ({
                     onCustomDateChange(null);
                   }
                 }}
-                className={`px-2.5 py-1 text-[11.5px] font-mono border transition cursor-pointer ${
+                className={`px-2.5 py-1 text-[11px] sm:text-[11.5px] font-mono border transition cursor-pointer shrink-0 whitespace-nowrap ${
                   isSelected
                     ? "bg-ink-black text-paper-white border-ink-black font-semibold"
                     : "bg-paper-white text-slate-gray border-slate-gray/20 hover:bg-mist-gray hover:text-ink-black"
